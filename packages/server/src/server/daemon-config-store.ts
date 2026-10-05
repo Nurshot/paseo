@@ -28,9 +28,51 @@ interface SupportedMutableConfigPatch {
   appendSystemPrompt?: string;
   terminalProfiles?: MutableDaemonConfig["terminalProfiles"];
   agentProfiles?: MutableDaemonConfig["agentProfiles"];
+  agentSettingsProfiles?: MutableDaemonConfig["agentSettingsProfiles"];
   skills?: MutableDaemonConfig["skills"];
   pluginsEnabled?: boolean;
   plugins?: MutableDaemonConfig["plugins"];
+}
+
+function resolveAgentSettingsProfilePatch(
+  current: MutableDaemonConfig,
+  patch: SupportedMutableConfigPatch,
+): SupportedMutableConfigPatch {
+  const bundle = patch.agentSettingsProfiles ?? current.agentSettingsProfiles;
+  if (!bundle) return patch;
+  const active = bundle.profiles.find((profile) => profile.id === bundle.activeProfileId);
+  if (!active) throw new Error("The active agent settings profile does not exist");
+  if (new Set(bundle.profiles.map((profile) => profile.id)).size !== bundle.profiles.length) {
+    throw new Error("Agent settings profile IDs must be unique");
+  }
+  if (bundle.profiles.some((profile) => !profile.name.trim())) {
+    throw new Error("Agent settings profile names must not be blank");
+  }
+  const base = patch.agentSettingsProfiles ? active.settings : current;
+  const settings = {
+    appendSystemPrompt: patch.appendSystemPrompt ?? base.appendSystemPrompt,
+    mcp: { injectIntoAgents: patch.mcp?.injectIntoAgents ?? base.mcp.injectIntoAgents },
+    browserTools: { enabled: patch.browserTools?.enabled ?? base.browserTools.enabled },
+  };
+  if (
+    patch.agentSettingsProfiles === undefined &&
+    patch.appendSystemPrompt === undefined &&
+    patch.mcp === undefined &&
+    patch.browserTools === undefined
+  )
+    return patch;
+  // Keep the ordinary settings as the live projection, so existing clients and
+  // runtime owners use the same config path when a profile changes.
+  return {
+    ...patch,
+    ...settings,
+    agentSettingsProfiles: {
+      ...bundle,
+      profiles: bundle.profiles.map((profile) =>
+        profile.id === active.id ? { id: profile.id, name: profile.name, settings } : profile,
+      ),
+    },
+  };
 }
 
 interface LoggerLike {
@@ -183,6 +225,7 @@ const RELOADABLE_PATHS = [
   "daemon.appendSystemPrompt",
   "daemon.terminalProfiles",
   "daemon.agentProfiles",
+  "daemon.agentSettingsProfiles",
   "app.baseUrl",
   "agents.providers",
   "agents.catalogRefreshTimeoutMs",
@@ -206,6 +249,7 @@ const PERSISTED_TO_MUTABLE_PATH = new Map<string, string>([
   ["daemon.appendSystemPrompt", "appendSystemPrompt"],
   ["daemon.terminalProfiles", "terminalProfiles"],
   ["daemon.agentProfiles", "agentProfiles"],
+  ["daemon.agentSettingsProfiles", "agentSettingsProfiles"],
   ["app.baseUrl", "app.baseUrl"],
   ["agents.providers", "providers"],
   ["agents.catalogRefreshTimeoutMs", "catalogRefreshTimeoutMs"],
@@ -274,6 +318,9 @@ function pickSupportedPatchFields(patch: MutableDaemonConfigPatch): SupportedMut
       : {}),
     ...(patch.terminalProfiles !== undefined ? { terminalProfiles: patch.terminalProfiles } : {}),
     ...(patch.agentProfiles !== undefined ? { agentProfiles: patch.agentProfiles } : {}),
+    ...(patch.agentSettingsProfiles !== undefined
+      ? { agentSettingsProfiles: patch.agentSettingsProfiles }
+      : {}),
     ...(patch.pluginsEnabled !== undefined ? { pluginsEnabled: patch.pluginsEnabled } : {}),
     ...(patch.plugins !== undefined ? { plugins: patch.plugins } : {}),
   };
@@ -361,7 +408,10 @@ export class DaemonConfigStore {
         "Relay is controlled by a daemon launch override. Remove PASEO_RELAY_ENABLED or the relay CLI flag before changing it here.",
       );
     }
-    const { removeProviders = [], ...configPatch } = parsedPatch;
+    const { removeProviders = [], ...configPatch } = resolveAgentSettingsProfilePatch(
+      this.current,
+      parsedPatch,
+    );
     const removedProviders = Array.from(new Set(removeProviders));
     const merged = deepMerge(this.current, configPatch);
     if (parsedPatch.skills?.selection !== undefined) {
@@ -661,5 +711,7 @@ function mergeMutableDaemonPatch(
   if (patch.appendSystemPrompt !== undefined) next.appendSystemPrompt = patch.appendSystemPrompt;
   if (patch.terminalProfiles !== undefined) next.terminalProfiles = patch.terminalProfiles;
   if (patch.agentProfiles !== undefined) next.agentProfiles = patch.agentProfiles;
+  if (patch.agentSettingsProfiles !== undefined)
+    next.agentSettingsProfiles = patch.agentSettingsProfiles;
   return Object.keys(next).length > 0 ? next : undefined;
 }

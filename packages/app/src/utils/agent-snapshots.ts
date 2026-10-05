@@ -59,6 +59,7 @@ export function derivePendingPermissionKey(
 
 export function projectAgentSnapshot(agent: Agent): AgentSnapshotPayload {
   return {
+    settingsProfileName: agent.settingsProfileName,
     id: agent.id,
     provider: agent.provider,
     cwd: agent.cwd,
@@ -107,6 +108,7 @@ export function normalizeAgentSnapshot(snapshot: AgentSnapshotPayload, serverId:
   return {
     serverId,
     id: snapshot.id,
+    settingsProfileName: snapshot.settingsProfileName,
     provider: snapshot.provider,
     status: snapshot.status,
     turn,

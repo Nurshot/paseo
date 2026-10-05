@@ -24,9 +24,13 @@ export function buildDraftAgentControls(input: {
   onSetFeature?: DraftAgentControlsProps["onSetFeature"];
   onApplyAgentProfile: DraftAgentControlsProps["onApplyAgentProfile"];
   onDropdownClose?: DraftAgentControlsProps["onDropdownClose"];
+  settingsProfileId?: string;
+  onSelectSettingsProfile?: (id: string) => void;
 }): DraftAgentControlsProps {
   const { formState, features, onSetFeature, onApplyAgentProfile, onDropdownClose } = input;
   return {
+    settingsProfileId: input.settingsProfileId,
+    onSelectSettingsProfile: input.onSelectSettingsProfile,
     providerDefinitions: formState.providerDefinitions,
     selectedProvider: formState.selectedProvider,
     modeOptions: formState.modeOptions,

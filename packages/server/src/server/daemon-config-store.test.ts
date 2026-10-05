@@ -29,6 +29,7 @@ function reloadableConfig(
     appendSystemPrompt: daemon.appendSystemPrompt ?? "",
     terminalProfiles: daemon.terminalProfiles,
     agentProfiles: daemon.agentProfiles,
+    agentSettingsProfiles: daemon.agentSettingsProfiles,
     cors: { allowedOrigins: [] },
     trustedProxies: ["loopback"],
     git: {
@@ -96,6 +97,87 @@ describe("DaemonConfigStore", () => {
     for (const dir of tempDirs) {
       rmSync(dir, { recursive: true, force: true });
     }
+  });
+
+  test("switches general agent settings profiles, saves edits and restores them after restart", () => {
+    const paseoHome = mkdtempSync(path.join(tmpdir(), "paseo-daemon-config-store-"));
+    tempDirs.push(paseoHome);
+    const store = new DaemonConfigStore(paseoHome, reloadableConfig({ version: 1 }));
+    const coding = {
+      id: "coding",
+      name: "Coding",
+      settings: {
+        appendSystemPrompt: "Write code.",
+        mcp: { injectIntoAgents: true },
+        browserTools: { enabled: false },
+      },
+    };
+    const reverse = {
+      id: "reverse",
+      name: "Reverse engineering",
+      settings: {
+        appendSystemPrompt: "Analyze binaries.",
+        mcp: { injectIntoAgents: false },
+        browserTools: { enabled: true },
+      },
+    };
+    const promptChanges: unknown[] = [];
+    store.onFieldChange("appendSystemPrompt", (value) => promptChanges.push(value));
+    store.patch({
+      agentSettingsProfiles: { activeProfileId: "coding", profiles: [coding, reverse] },
+    });
+    store.patch({ appendSystemPrompt: "Write tested code.", browserTools: { enabled: true } });
+    const edited = store.get().agentSettingsProfiles!;
+    expect(edited.profiles[0].settings.appendSystemPrompt).toBe("Write tested code.");
+    expect(edited.profiles[0].settings.browserTools.enabled).toBe(true);
+    expect(edited.profiles[1]).toEqual(reverse);
+
+    store.patch({ agentSettingsProfiles: { ...edited, activeProfileId: "reverse" } });
+    expect(store.get()).toMatchObject(reverse.settings);
+    store.patch({
+      agentSettingsProfiles: { ...store.get().agentSettingsProfiles!, activeProfileId: "coding" },
+    });
+    expect(store.get()).toMatchObject({
+      appendSystemPrompt: "Write tested code.",
+      mcp: { injectIntoAgents: true },
+      browserTools: { enabled: true },
+    });
+    expect(promptChanges).toEqual([
+      "Write code.",
+      "Write tested code.",
+      "Analyze binaries.",
+      "Write tested code.",
+    ]);
+
+    const persisted = loadPersistedConfig(paseoHome);
+    expect(persisted.daemon?.agentSettingsProfiles).toEqual(store.get().agentSettingsProfiles);
+    const restarted = new DaemonConfigStore(paseoHome, reloadableConfig(persisted));
+    expect(restarted.get().agentSettingsProfiles).toEqual(edited);
+    expect(restarted.get().appendSystemPrompt).toBe("Write tested code.");
+
+    expect(() =>
+      restarted.patch({ agentSettingsProfiles: { ...edited, activeProfileId: "missing" } }),
+    ).toThrow("does not exist");
+    expect(() =>
+      restarted.patch({
+        agentSettingsProfiles: { activeProfileId: "coding", profiles: [coding, coding] },
+      }),
+    ).toThrow("unique");
+    expect(() =>
+      restarted.patch({
+        agentSettingsProfiles: { activeProfileId: "coding", profiles: [{ ...coding, name: " " }] },
+      }),
+    ).toThrow("blank");
+    expect(loadPersistedConfig(paseoHome)).toEqual(persisted);
+
+    restarted.onFieldChange("appendSystemPrompt", (value) => {
+      if (value === "Analyze binaries.") throw new Error("live owner failed");
+    });
+    expect(() =>
+      restarted.patch({ agentSettingsProfiles: { ...edited, activeProfileId: "reverse" } }),
+    ).toThrow("live owner failed");
+    expect(restarted.get().agentSettingsProfiles).toEqual(edited);
+    expect(loadPersistedConfig(paseoHome)).toEqual(persisted);
   });
 
   test("patch persists relay state and emits its field change", () => {

@@ -70,6 +70,7 @@ export interface AgentRuntimeInfo {
 }
 
 export interface Agent {
+  settingsProfileName?: string;
   serverId: string;
   id: string;
   provider: AgentProvider;

@@ -23,6 +23,23 @@ Save the settings you use together as a named profile. Choose **UI work**, **Pla
 
 Profiles are saved on that host. The available settings depend on the provider and model you choose.
 
+## Save general agent settings
+
+At the top of **Settings → your host → Agents**, use **Settings profile** to switch
+between named system prompts and Paseo/browser tool settings. **New profile** copies
+the current settings. Select the new profile, then edit the system prompt and tool
+switches below it. Your changes are saved to that profile. Rename or remove a profile
+under **Manage profiles**; at least one profile remains.
+
+These settings profiles are independent of the provider/model profiles. Orchestration
+skill installation stays shared across the host.
+
+When starting a chat, select a settings profile beside the model controls. The host's
+selected profile is the default. Each chat keeps the settings captured when it starts,
+so you can run a reverse engineering chat alongside a coding or review chat. Editing,
+switching or removing a host profile does not change existing chats. The captured
+profile name appears beside the chat's model controls.
+
 ## Apply settings in one click
 
 When creating an agent, open the model picker and select a saved profile under **Profiles**. Paseo applies its settings together; you can still adjust them before sending your prompt.

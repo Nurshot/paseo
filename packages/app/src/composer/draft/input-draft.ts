@@ -25,6 +25,7 @@ import { useDraftStore } from "@/stores/draft-store";
 import { AfterPaintPublication } from "@/composer/after-paint-publication";
 import { useShallow } from "zustand/shallow";
 import type { ComposerTextSource } from "@/composer/text-source";
+import { useDaemonConfig } from "@/hooks/use-daemon-config";
 import { isWeb } from "@/constants/platform";
 
 type AttachmentUpdater =
@@ -45,6 +46,7 @@ interface UseAgentInputDraftInput {
 }
 
 type DraftComposerState = UseAgentFormStateResult & {
+  settingsProfileId?: string;
   workingDir: string;
   effectiveModelId: string;
   effectiveThinkingOptionId: string;
@@ -83,6 +85,18 @@ export function useAgentInputDraft(input: UseAgentInputDraftInput): AgentInputDr
         selectedServerId: formState.selectedServerId,
       }),
     [formState.selectedServerId, input.draftKey],
+  );
+  const { config: hostConfig } = useDaemonConfig(formState.selectedServerId);
+  const [profileChoices, setProfileChoices] = useState<Record<string, string>>({});
+  const settingsProfileId =
+    profileChoices[draftKey] ??
+    composerOptions?.initialValues?.settingsProfileId ??
+    hostConfig?.agentSettingsProfiles?.activeProfileId;
+  const selectSettingsProfile = useCallback(
+    (id: string) => {
+      setProfileChoices((current) => ({ ...current, [draftKey]: id }));
+    },
+    [draftKey],
   );
   const attachments = useDraftStore(
     useShallow((state) =>
@@ -312,6 +326,7 @@ export function useAgentInputDraft(input: UseAgentInputDraftInput): AgentInputDr
 
     return {
       ...formState,
+      settingsProfileId,
       workingDir,
       effectiveModelId,
       effectiveThinkingOptionId,
@@ -321,10 +336,14 @@ export function useAgentInputDraft(input: UseAgentInputDraftInput): AgentInputDr
         features: draftFeatures,
         onSetFeature: setDraftFeatureValue,
         onApplyAgentProfile: applyDraftAgentProfile,
+        settingsProfileId,
+        onSelectSettingsProfile: selectSettingsProfile,
       }),
       commandDraft,
     };
   }, [
+    settingsProfileId,
+    selectSettingsProfile,
     commandDraft,
     composerOptions,
     effectiveModelId,

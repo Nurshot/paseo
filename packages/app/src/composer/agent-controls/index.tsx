@@ -90,6 +90,10 @@ import {
   type AgentProfileSeed,
   type DraftAgentProfileControls,
 } from "@/agent-profiles";
+import {
+  AgentSettingsProfilePicker,
+  AgentSettingsProfileLabel,
+} from "@/agent-profiles/settings/agent-settings-profile-picker";
 import { buildSettingsHostSectionRoute } from "@/utils/host-routes";
 
 interface AgentControlOption {
@@ -133,6 +137,8 @@ interface ControlledAgentControlsProps {
 }
 
 export interface DraftAgentControlsProps {
+  settingsProfileId?: string;
+  onSelectSettingsProfile?: (id: string) => void;
   providerDefinitions: AgentProviderDefinition[];
   selectedProvider: AgentProvider | null;
   modeOptions: AgentMode[];
@@ -389,6 +395,7 @@ function pickDesktopModel({
 }
 
 type AgentControlsSlice = {
+  settingsProfileName: string | undefined;
   provider: string;
   cwd: string | null;
   runtimeModelId: string | null;
@@ -409,6 +416,7 @@ function selectAgentControlsSlice(
     return null;
   }
   return {
+    settingsProfileName: currentAgent.settingsProfileName,
     provider: currentAgent.provider,
     cwd: currentAgent.cwd,
     runtimeModelId: currentAgent.runtimeInfo?.model ?? null,
@@ -1785,6 +1793,7 @@ export const AgentControls = memo(function AgentControls({
     <>
       {commandCenterRegistration}
       {profileEditor.element}
+      <AgentSettingsProfileLabel name={agent.settingsProfileName} />
       <ControlledAgentControls
         provider={agent.provider}
         modelSelectorProviders={agentModelSelectorProviders}
@@ -1816,6 +1825,8 @@ export const AgentControls = memo(function AgentControls({
 });
 
 export function DraftAgentControls({
+  settingsProfileId,
+  onSelectSettingsProfile,
   providerDefinitions,
   selectedProvider,
   modeOptions,
@@ -1903,6 +1914,12 @@ export function DraftAgentControls({
   return (
     <>
       {profileEditor.element}
+      <AgentSettingsProfilePicker
+        serverId={modelSelectorServerId}
+        value={settingsProfileId}
+        onSelect={onSelectSettingsProfile}
+        disabled={disabled}
+      />
       <ControlledAgentControls
         provider={selectedProvider ?? ""}
         modelSelectorProviders={modelSelectorProviders}

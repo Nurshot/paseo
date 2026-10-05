@@ -1,3 +1,4 @@
+import { useHostFeature } from "@/runtime/host-features";
 import {
   ArrowDown,
   ArrowUp,
@@ -22,6 +23,7 @@ import {
   DEFAULT_TERMINAL_PROFILES,
 } from "@getpaseo/protocol/terminal-profiles";
 import { AgentProfilesSection } from "@/agent-profiles";
+import { AgentSettingsProfileCard } from "@/agent-profiles/settings/agent-settings-profile-card";
 import { AgentSkillsSection } from "@/agent-skills";
 import { AdaptiveModalSheet, type SheetHeader } from "@/components/adaptive-modal-sheet";
 import { SettingsTextAreaCard } from "@/components/settings-textarea";
@@ -287,6 +289,7 @@ export function HostAgentsPage({ serverId }: { serverId: string }) {
     <View>
       {isConnected ? (
         <SettingsSection title={t("settings.hostSections.agents")}>
+          <AgentSettingsProfileCard serverId={serverId} />
           <InjectPaseoToolsCard serverId={serverId} />
           <BrowserToolsOptInCard serverId={serverId} />
           <AppendSystemPromptCard serverId={serverId} />
@@ -979,6 +982,7 @@ function EnableTerminalAgentHooksCard({ serverId }: { serverId: string }) {
 
 function AppendSystemPromptCard({ serverId }: { serverId: string }) {
   const { t } = useTranslation();
+  const profileScoped = useHostFeature(serverId, "agentSettingsProfiles");
   const isConnected = useHostRuntimeIsConnected(serverId);
   const { config, patchConfig } = useDaemonConfig(serverId);
   const persistedPrompt = config?.appendSystemPrompt ?? "";
@@ -1035,7 +1039,11 @@ function AppendSystemPromptCard({ serverId }: { serverId: string }) {
               {t("settings.host.orchestration.systemPrompt.title")}
             </Text>
             <Text style={settingsStyles.rowHint}>
-              {t("settings.host.orchestration.systemPrompt.hint")}
+              {t(
+                profileScoped
+                  ? "settings.host.agentSettingsProfiles.promptHint"
+                  : "settings.host.orchestration.systemPrompt.hint",
+              )}
             </Text>
           </View>
           <Button
