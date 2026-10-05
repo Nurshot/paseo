@@ -23,6 +23,52 @@ import {
 const MOCK_PROVIDER_LABEL = "Mock Load Test";
 
 test.describe("Agent profiles settings", () => {
+  test("repeated settings profile switches keep one copy of every Agents section", async ({
+    page,
+  }) => {
+    const client = await connectDaemonClient<DaemonClient>({
+      clientIdPrefix: "profile-section-count",
+    });
+    const settings = {
+      appendSystemPrompt: "",
+      mcp: { injectIntoAgents: false },
+      browserTools: { enabled: false },
+      agentProfiles: [],
+      skills: { selection: { mode: "custom" as const, skills: [] } },
+    };
+    try {
+      await client.patchDaemonConfig({
+        agentSettingsProfiles: {
+          activeProfileId: "section-a",
+          profiles: [
+            { id: "section-a", name: "Section A", settings },
+            { id: "section-b", name: "Section B", settings },
+          ],
+        },
+      });
+      await openAgentProfileSettings(page);
+      for (const width of [601, 390, 1280]) {
+        await page.setViewportSize({ width, height: 900 });
+        for (let change = 0; change < 6; change++) {
+          const name = change % 2 === 0 ? "Section B" : "Section A";
+          await page.getByTestId("agent-settings-profile-select").getByRole("button").click();
+          await page.getByText(name, { exact: true }).click();
+          await expect(page.getByTestId("agent-settings-profile-select")).toContainText(name);
+          await expect(
+            page.getByRole("button", { name: "Open skills documentation", exact: true }),
+          ).toHaveCount(1);
+          await expect(
+            page.getByRole("button", { name: "Choose skills", exact: true }),
+          ).toHaveCount(1);
+          await expect(page.getByTestId("agent-profiles-section")).toHaveCount(1);
+          await expect(page.getByTestId("host-page-append-system-prompt-card")).toHaveCount(1);
+        }
+      }
+    } finally {
+      await client.close();
+    }
+  });
+
   test("general Agents profiles restore their own prompt and tool settings", async ({ page }) => {
     const client = await connectDaemonClient<DaemonClient>({ clientIdPrefix: "settings-profiles" });
     try {
