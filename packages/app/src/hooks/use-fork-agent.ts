@@ -142,6 +142,11 @@ export function useForkAgent(
         throw new Error(t("workspace.terminal.hostDisconnected"));
       }
       const draftSetup = buildForkDraftSetup(agent);
+      if (draftSetup) {
+        draftSetup.settingsProfileId = useSessionStore
+          .getState()
+          .sessions[serverId]?.agents.get(agentId)?.settingsProfileId;
+      }
       const prepareForkDraft = async () => {
         const draftId = generateDraftId();
         const payload = await client.buildAgentForkContext(agentId, boundary);

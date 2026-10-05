@@ -1,6 +1,7 @@
 import type { UserComposerAttachment } from "@/attachments/types";
 import type { DraftAgentControlsProps } from "@/composer/agent-controls";
 import type { UseAgentFormStateResult } from "@/hooks/use-agent-form-state";
+import type { AgentSettingsProfiles } from "@getpaseo/protocol/agent-settings-profile";
 
 export interface DraftKeyContext {
   selectedServerId: string | null;
@@ -12,12 +13,20 @@ interface InitialSettingsProfileSelection {
   selectedServerId: string | null;
   initialServerId: string | null | undefined;
   settingsProfileId: string | undefined;
+  profileChoice: string | undefined;
+  bundle: AgentSettingsProfiles | undefined;
 }
 
-export function resolveInitialSettingsProfileId(
+export function resolveDraftSettingsProfileId(
   input: InitialSettingsProfileSelection,
 ): string | undefined {
-  return input.selectedServerId === input.initialServerId ? input.settingsProfileId : undefined;
+  const initialProfileId =
+    input.selectedServerId === input.initialServerId ? input.settingsProfileId : undefined;
+  const profileId = input.profileChoice ?? initialProfileId ?? input.bundle?.activeProfileId;
+  if (input.bundle && !input.bundle.profiles.some((profile) => profile.id === profileId)) {
+    return input.bundle.activeProfileId;
+  }
+  return profileId;
 }
 
 export function resolveDraftKey(input: {

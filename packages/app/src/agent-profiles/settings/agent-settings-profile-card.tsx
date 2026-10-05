@@ -1,16 +1,16 @@
 import { useCallback, useMemo, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
-import { View } from "react-native";
+import { Text, View } from "react-native";
 import { useTranslation } from "react-i18next";
 import { StyleSheet } from "react-native-unistyles";
 import type { MutableDaemonConfig, MutableDaemonConfigPatch } from "@getpaseo/protocol/messages";
 import type { AgentSettingsProfiles } from "@getpaseo/protocol/agent-settings-profile";
 import { SettingsCard, SettingsRow, SettingsSelect } from "@/components/settings";
 import { Button } from "@/components/ui/button";
+import { Alert } from "@/components/ui/alert";
 import { AdaptiveRenameModal } from "@/components/rename-modal";
 import { useDaemonConfig } from "@/hooks/use-daemon-config";
 import { useHostFeature } from "@/runtime/host-features";
-import { useToast } from "@/contexts/toast-context";
 import { confirmDialog } from "@/utils/confirm-dialog";
 import { generateAgentProfileId } from "../internal/profile-id";
 
@@ -29,7 +29,6 @@ function LoadedAgentSettingsProfileCard({
   patchConfig: ReturnType<typeof useDaemonConfig>["patchConfig"];
 }) {
   const { t } = useTranslation();
-  const toast = useToast();
   const [editor, setEditor] = useState<"create" | "rename" | null>(null);
   const save = useMutation({
     mutationFn: (
@@ -38,7 +37,6 @@ function LoadedAgentSettingsProfileCard({
         "agentSettingsProfiles" | "expectedAgentSettingsProfiles"
       >,
     ) => patchConfig(request),
-    onError: (error: Error) => toast.error(error.message),
   });
 
   const bundle = useMemo<AgentSettingsProfiles>(
@@ -135,6 +133,11 @@ function LoadedAgentSettingsProfileCard({
         />
         <SettingsRow label={t("settings.host.agentSettingsProfiles.manage")}>
           <View style={styles.actions}>
+            {save.isPending ? (
+              <Text style={styles.saving} testID="agent-settings-profile-saving">
+                {t("settings.host.orchestration.systemPrompt.saving")}
+              </Text>
+            ) : null}
             <Button
               variant="outline"
               size="sm"
@@ -164,6 +167,14 @@ function LoadedAgentSettingsProfileCard({
             </Button>
           </View>
         </SettingsRow>
+        {save.error ? (
+          <Alert
+            variant="error"
+            size="sm"
+            description={save.error.message}
+            testID="agent-settings-profile-error"
+          />
+        ) : null}
       </SettingsCard>
       {editor ? (
         <AdaptiveRenameModal
@@ -186,5 +197,6 @@ function LoadedAgentSettingsProfileCard({
 }
 
 const styles = StyleSheet.create((theme) => ({
-  actions: { flexDirection: "row", flexWrap: "wrap", gap: theme.spacing[2] },
+  actions: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: theme.spacing[2] },
+  saving: { color: theme.colors.foregroundMuted, fontSize: theme.fontSize.base },
 }));

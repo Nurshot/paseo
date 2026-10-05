@@ -6,6 +6,7 @@ import {
   useRef,
   useState,
   type ReactElement,
+  type ReactNode,
   type RefObject,
 } from "react";
 import { useTranslation } from "react-i18next";
@@ -106,6 +107,7 @@ type AgentControlSelector = "provider" | "mode" | "model" | "thinking" | `featur
 const EMPTY_AGENT_PROVIDER_DEFINITIONS: AgentProviderDefinition[] = [];
 
 interface ControlledAgentControlsProps {
+  settingsProfileControl?: ReactNode;
   provider: string;
   providerOptions?: AgentControlOption[];
   selectedProviderId?: string;
@@ -482,6 +484,7 @@ function buildOpenChangeHandler(
 }
 
 function ControlledAgentControls({
+  settingsProfileControl,
   provider,
   providerOptions,
   selectedProviderId,
@@ -744,6 +747,7 @@ function ControlledAgentControls({
       <View style={styles.container} onLayout={handleLayout}>
         {!isCompact ? (
           <DesktopAgentControlsContent
+            settingsProfileControl={settingsProfileControl}
             provider={provider}
             providerOptions={providerOptions}
             selectedProviderId={selectedProviderId}
@@ -797,6 +801,7 @@ function ControlledAgentControls({
           />
         ) : (
           <SheetAgentControlsContent
+            settingsProfileControl={settingsProfileControl}
             provider={provider}
             selectedModelId={selectedModelId}
             selectedThinkingOptionId={selectedThinkingOptionId}
@@ -839,6 +844,7 @@ function ControlledAgentControls({
 }
 
 interface DesktopAgentControlsContentProps {
+  settingsProfileControl?: ReactNode;
   provider: string;
   providerOptions?: AgentControlOption[];
   selectedProviderId?: string;
@@ -902,6 +908,7 @@ function DesktopAgentControlsContent(props: DesktopAgentControlsContentProps) {
   const { theme } = useUnistyles();
   const { t } = useTranslation();
   const {
+    settingsProfileControl,
     provider,
     providerOptions,
     selectedProviderId,
@@ -995,6 +1002,7 @@ function DesktopAgentControlsContent(props: DesktopAgentControlsContentProps) {
           <TooltipTrigger asChild triggerRefProp="ref">
             <View style={styles.modelControl}>
               <CombinedModelSelector
+                settingsProfileControl={settingsProfileControl}
                 providers={modelSelectorProviders}
                 selectedProvider={provider}
                 selectedModel={selectedModelId ?? ""}
@@ -1115,6 +1123,7 @@ function DesktopAgentControlsContent(props: DesktopAgentControlsContentProps) {
 }
 
 interface SheetAgentControlsContentProps {
+  settingsProfileControl?: ReactNode;
   provider: string;
   selectedModelId?: string;
   selectedThinkingOptionId?: string;
@@ -1159,6 +1168,7 @@ interface SheetAgentControlsContentProps {
 function SheetAgentControlsContent(props: SheetAgentControlsContentProps) {
   const { t } = useTranslation();
   const {
+    settingsProfileControl,
     provider,
     selectedModelId,
     selectedThinkingOptionId,
@@ -1261,6 +1271,7 @@ function SheetAgentControlsContent(props: SheetAgentControlsContentProps) {
 
   return canSelectModel ? (
     <CompactModelSheet
+      settingsProfileControl={settingsProfileControl}
       providers={modelSelectorProviders}
       selectedProvider={provider}
       selectedModel={selectedModelId ?? ""}
@@ -1789,6 +1800,11 @@ export const AgentControls = memo(function AgentControls({
     [refreshSnapshot],
   );
 
+  const settingsProfileControl = useMemo(
+    () => <AgentSettingsProfileLabel name={agent?.settingsProfileName} />,
+    [agent],
+  );
+
   if (!agent) {
     return null;
   }
@@ -1797,8 +1813,8 @@ export const AgentControls = memo(function AgentControls({
     <>
       {commandCenterRegistration}
       {profileEditor.element}
-      <AgentSettingsProfileLabel name={agent.settingsProfileName} />
       <ControlledAgentControls
+        settingsProfileControl={settingsProfileControl}
         provider={agent.provider}
         modelSelectorProviders={agentModelSelectorProviders}
         modelOptions={modelOptions}
@@ -1916,16 +1932,23 @@ export function DraftAgentControls({
     [selectedProvider, providerDefinitions, modeOptions, selectedMode, onSelectMode, disabled],
   );
 
-  return (
-    <>
-      {profileEditor.element}
+  const settingsProfileControl = useMemo(
+    () => (
       <AgentSettingsProfilePicker
         serverId={modelSelectorServerId}
         value={settingsProfileId}
         onSelect={onSelectSettingsProfile}
         disabled={disabled}
       />
+    ),
+    [modelSelectorServerId, settingsProfileId, onSelectSettingsProfile, disabled],
+  );
+
+  return (
+    <>
+      {profileEditor.element}
       <ControlledAgentControls
+        settingsProfileControl={settingsProfileControl}
         provider={selectedProvider ?? ""}
         modelSelectorProviders={modelSelectorProviders}
         modelOptions={modelOptions}

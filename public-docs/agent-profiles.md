@@ -37,11 +37,13 @@ and its selected orchestration skills. Skill files live in the providers’ shar
 directories; use the existing skill install/update actions to apply a selection to disk.
 Switching profiles alone does not install or delete skill files.
 
-When starting a chat, select a settings profile beside the model controls. The host's
-selected profile is the default. Each chat keeps the settings captured when it starts,
+When starting a chat, open the model menu and choose a settings profile from the tabs
+at the top. Profiles belong to the host running the chat and are available from any
+connected device. The selected host's profile is the default.
+Each chat keeps the settings captured when it starts,
 so you can run a reverse engineering chat alongside a coding or review chat. Editing,
 switching or removing a host profile does not change existing chats. The captured
-profile name appears beside the chat's model controls.
+profile name appears inside the chat's model menu.
 
 Imported provider sessions also capture the host's selected settings profile.
 Subagents created through a chat's Paseo tools inherit that chat's captured profile,

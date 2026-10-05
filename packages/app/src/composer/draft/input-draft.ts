@@ -11,9 +11,8 @@ import {
 import { useDraftAgentFeatures } from "@/hooks/use-draft-agent-features";
 import {
   buildDraftAgentControls,
-  hasDraftContent,
   resolveDraftKey,
-  resolveInitialSettingsProfileId,
+  resolveDraftSettingsProfileId,
   type DraftKeyInput,
 } from "@/composer/draft/input-draft-core";
 import {
@@ -94,16 +93,14 @@ export function useAgentInputDraft(input: UseAgentInputDraftInput): AgentInputDr
       state.settingsProfileChoices[draftKey]?.[formState.selectedServerId ?? ""] ?? undefined,
   );
   const initialValues = composerOptions?.initialValues;
-  const initialSettingsProfileId = resolveInitialSettingsProfileId({
+  const settingsProfileId = resolveDraftSettingsProfileId({
     selectedServerId: formState.selectedServerId,
     initialServerId:
       composerOptions?.initialSettingsProfileServerId ?? composerOptions?.initialServerId,
     settingsProfileId: initialValues?.settingsProfileId,
+    profileChoice: settingsProfileChoice,
+    bundle: hostConfig?.agentSettingsProfiles,
   });
-  const settingsProfileId =
-    settingsProfileChoice ??
-    initialSettingsProfileId ??
-    hostConfig?.agentSettingsProfiles?.activeProfileId;
   const selectSettingsProfile = useCallback(
     (id: string) => {
       const serverId = formState.selectedServerId;
@@ -172,10 +169,6 @@ export function useAgentInputDraft(input: UseAgentInputDraftInput): AgentInputDr
       const store = useDraftStore.getState();
       const current = store.getDraftInput(draftKey) ?? { text: "", attachments: [] };
       const next = update(current);
-      if (!hasDraftContent(next)) {
-        store.clearDraftInput({ draftKey, lifecycle: "abandoned" });
-        return;
-      }
       store.saveDraftInput({ draftKey, draft: next });
     },
     [draftKey],
