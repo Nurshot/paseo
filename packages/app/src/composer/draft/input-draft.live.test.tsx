@@ -7,8 +7,22 @@ import { useDraftStore } from "@/stores/draft-store";
 import type { AttachmentMetadata, ComposerAttachment } from "@/attachments/types";
 import { createWorkspaceFileAttachment } from "@/attachments/workspace-file";
 
-const { asyncStorage } = vi.hoisted(() => ({
+const { asyncStorage, profileHost } = vi.hoisted(() => ({
   asyncStorage: new Map<string, string>(),
+  profileHost: { id: "host-1", enabled: false },
+}));
+
+vi.mock("@/hooks/use-daemon-config", () => ({
+  useDaemonConfig: (serverId: string) => ({
+    config: profileHost.enabled
+      ? {
+          agentSettingsProfiles: {
+            activeProfileId: `${serverId}-default`,
+            profiles: [],
+          },
+        }
+      : null,
+  }),
 }));
 
 vi.hoisted(() => {
@@ -33,7 +47,7 @@ vi.mock("@/attachments/service", () => ({
 
 vi.mock("@/hooks/use-agent-form-state", () => ({
   useAgentFormState: () => ({
-    selectedServerId: "host-1",
+    selectedServerId: profileHost.id,
     selectedProvider: "codex",
     setProviderFromUser: () => undefined,
     selectedMode: "auto",
@@ -140,6 +154,8 @@ beforeAll(async () => {
 
 describe("useAgentInputDraft live contract", () => {
   beforeEach(() => {
+    profileHost.id = "host-1";
+    profileHost.enabled = false;
     asyncStorage.clear();
     document.body.innerHTML = "<div id='root'></div>";
     localStorage.clear();
@@ -149,6 +165,86 @@ describe("useAgentInputDraft live contract", () => {
       createModalDraft: null,
       attachmentFocusRequestByDraftKey: {},
     });
+  });
+
+  it("keeps profile choices separate when the same draft changes hosts", async () => {
+    profileHost.enabled = true;
+    let latest: ReturnType<typeof useAgentInputDraft> | null = null;
+    function getLatest(): ReturnType<typeof useAgentInputDraft> {
+      if (!latest) throw new Error("Expected hook result");
+      return latest;
+    }
+    function Probe() {
+      latest = useAgentInputDraft({
+        draftKey: "new-workspace:shared",
+        composer: { initialServerId: "host-1", isVisible: true, lockedWorkingDir: "/repo" },
+      });
+      return null;
+    }
+    const container = document.getElementById("root");
+    if (!container) throw new Error("Missing root container");
+    const root = createTestRoot(container);
+    const queryClient = new QueryClient();
+    const render = async () => {
+      await act(async () => {
+        root.render(
+          <QueryClientProvider client={queryClient}>
+            <Probe />
+          </QueryClientProvider>,
+        );
+      });
+    };
+    await render();
+    await act(async () => {
+      getLatest().composerState?.agentControls.onSelectSettingsProfile?.("host-1-coding");
+    });
+    expect(getLatest().composerState?.settingsProfileId).toBe("host-1-coding");
+    profileHost.id = "host-2";
+    await render();
+    expect(getLatest().composerState?.settingsProfileId).toBe("host-2-default");
+    profileHost.id = "host-1";
+    await render();
+    expect(getLatest().composerState?.settingsProfileId).toBe("host-1-coding");
+  });
+
+  it("uses the current host default when an initial profile belongs to a different host", async () => {
+    profileHost.enabled = true;
+    let latest: ReturnType<typeof useAgentInputDraft> | null = null;
+    function getLatest(): ReturnType<typeof useAgentInputDraft> {
+      if (!latest) throw new Error("Expected hook result");
+      return latest;
+    }
+    function Probe() {
+      latest = useAgentInputDraft({
+        draftKey: "new-workspace:fork",
+        composer: {
+          initialServerId: profileHost.id,
+          initialSettingsProfileServerId: "host-1",
+          initialValues: { settingsProfileId: "host-1-coding" },
+          isVisible: true,
+          lockedWorkingDir: "/repo",
+        },
+      });
+      return null;
+    }
+    const container = document.getElementById("root");
+    if (!container) throw new Error("Missing root container");
+    const root = createTestRoot(container);
+    const queryClient = new QueryClient();
+    const render = async () => {
+      await act(async () => {
+        root.render(
+          <QueryClientProvider client={queryClient}>
+            <Probe />
+          </QueryClientProvider>,
+        );
+      });
+    };
+    await render();
+    expect(getLatest().composerState?.settingsProfileId).toBe("host-1-coding");
+    profileHost.id = "host-2";
+    await render();
+    expect(getLatest().composerState?.settingsProfileId).toBe("host-2-default");
   });
 
   it("hydrates persisted text and attachments and returns draft-mode composer state for a caller-provided key", async () => {

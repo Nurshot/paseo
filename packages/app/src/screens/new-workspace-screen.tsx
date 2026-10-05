@@ -1052,12 +1052,14 @@ function buildComposerConfig(input: {
   serverId: string;
   workspaceDirectory: string | null;
   sourceDirectory: string | null;
-  initialSetup?: WorkspaceDraftTabSetup | null;
+  pendingSetup?: PendingWorkspaceDraftSetup | null;
 }): Parameters<typeof useAgentInputDraft>[0]["composer"] {
-  const { serverId, workspaceDirectory, sourceDirectory, initialSetup } = input;
+  const { serverId, workspaceDirectory, sourceDirectory, pendingSetup } = input;
+  const initialSetup = pendingSetup?.setup;
   const workingDir = workspaceDirectory || sourceDirectory || undefined;
   return {
     initialServerId: serverId || null,
+    initialSettingsProfileServerId: pendingSetup?.serverId,
     initialValues: buildComposerInitialValues({ initialSetup }),
     initialFeatureValues: initialSetup?.featureValues,
     isVisible: true,
@@ -1088,13 +1090,17 @@ function resolveWorkspaceDraftSubmissionConfig(input: {
   if (initialSetup) {
     return {
       cwd: initialSetup.cwd,
-      settingsProfileId: initialSetup.settingsProfileId,
+      settingsProfileId: composerState.settingsProfileId,
       provider: initialSetup.provider,
       modeId: initialSetup.modeId,
       model: initialSetup.model,
       thinkingOptionId: initialSetup.thinkingOptionId,
       featureValues: initialSetup.featureValues,
-      target: { kind: "draft", draftId, setup: initialSetup },
+      target: {
+        kind: "draft",
+        draftId,
+        setup: { ...initialSetup, settingsProfileId: composerState.settingsProfileId },
+      },
     };
   }
   return {
@@ -1781,7 +1787,7 @@ export function NewWorkspaceScreen({
       serverId: selectedServerId,
       workspaceDirectory: workspace?.workspaceDirectory ?? null,
       sourceDirectory: selectedSourceDirectory,
-      initialSetup: forkDraftSetup?.setup,
+      pendingSetup: forkDraftSetup,
     }),
   });
   const composerState = chatDraft.composerState;

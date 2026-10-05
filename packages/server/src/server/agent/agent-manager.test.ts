@@ -2321,6 +2321,80 @@ test("settings profiles keep concurrent chats isolated through profile edits, de
   }
 });
 
+test.each([true, false])(
+  "refresh preserves captured browser tool availability (%s) through profile edits and disk reload",
+  async (enabled) => {
+    const workdir = mkdtempSync(join(tmpdir(), "agent-browser-refresh-"));
+    const storage = new AgentStorage(join(workdir, "agents"), logger);
+    const toolLists: string[][] = [];
+    class BrowserToolClient extends TestAgentClient {
+      override readonly capabilities = {
+        ...TEST_CAPABILITIES,
+        supportsNativePaseoTools: true,
+      };
+      override async createSession(
+        config: AgentSessionConfig,
+        context?: AgentLaunchContext,
+      ): Promise<AgentSession> {
+        toolLists.push([...context!.paseoTools!.tools.keys()]);
+        return new TestAgentSession(config);
+      }
+      override async resumeSession(
+        _handle: AgentPersistenceHandle,
+        config?: Partial<AgentSessionConfig>,
+        context?: AgentLaunchContext,
+      ): Promise<AgentSession> {
+        toolLists.push([...context!.paseoTools!.tools.keys()]);
+        return new TestAgentSession({ ...config, provider: "codex", cwd: workdir });
+      }
+    }
+    const profile = {
+      id: "browser-context",
+      name: "Browser context",
+      settings: {
+        appendSystemPrompt: "",
+        mcp: { injectIntoAgents: true },
+        browserTools: { enabled },
+      },
+    };
+    const browserTool = {
+      name: "browser_navigate",
+      description: "Navigate a browser",
+      handler: async () => ({ content: [] }),
+    };
+    const manager = new AgentManager({
+      clients: { codex: new BrowserToolClient() },
+      registry: storage,
+      logger,
+      mcpBaseUrl: "http://127.0.0.1:9999/mcp/agents",
+      resolveSettingsProfile: () => profile,
+      paseoToolCatalogFactory: ({ browserToolsEnabled }) => {
+        const tools = new Map(
+          (browserToolsEnabled ?? !enabled) ? [[browserTool.name, browserTool]] : [],
+        );
+        return {
+          tools,
+          getTool: (name) => tools.get(name),
+          executeTool: async () => ({ content: [] }),
+        };
+      },
+    });
+    const agent = await manager.createAgent({ provider: "codex", cwd: workdir }, undefined, {});
+    try {
+      const expectedTools = enabled ? ["browser_navigate"] : [];
+      expect(toolLists).toEqual([expectedTools]);
+      profile.settings.browserTools.enabled = !enabled;
+      await manager.reloadAgentSession(agent.id);
+      expect(toolLists).toEqual([expectedTools, expectedTools]);
+      await manager.reloadAgentSession(agent.id, undefined, { rehydrateFromDisk: true });
+      expect(toolLists).toEqual([expectedTools, expectedTools, expectedTools]);
+    } finally {
+      await manager.closeAgent(agent.id);
+      rmSync(workdir, { recursive: true, force: true });
+    }
+  },
+);
+
 test("createAgent injects daemon append system prompt at runtime only", async () => {
   const workdir = mkdtempSync(join(tmpdir(), "agent-manager-test-"));
   const storagePath = join(workdir, "agents");
@@ -4293,6 +4367,90 @@ test("resumeAgentFromPersistence keeps metadata config, applies overrides, and p
       PASEO_AGENT_CWD: workdir,
     },
   });
+});
+
+test("imported chats preserve their captured profile through host edits and disk reload", async () => {
+  const workdir = mkdtempSync(join(tmpdir(), "agent-profile-import-"));
+  const storage = new AgentStorage(join(workdir, "agents"), logger);
+  const launchTools: string[][] = [];
+  const prompts: Array<string | undefined> = [];
+  class ProfileImportClient extends TestAgentClient {
+    override readonly capabilities = { ...TEST_CAPABILITIES, supportsNativePaseoTools: true };
+    async importSession(input: ImportProviderSessionInput, context: ImportProviderSessionContext) {
+      prompts.push(context.config.daemonAppendSystemPrompt);
+      launchTools.push([...context.launchContext.paseoTools!.tools.keys()]);
+      return {
+        session: new TestAgentSession(context.config),
+        config: { provider: "codex" as const, cwd: workdir },
+        persistence: {
+          provider: "codex" as const,
+          sessionId: input.providerHandleId,
+          nativeHandle: input.providerHandleId,
+        },
+        timeline: [],
+      };
+    }
+    override async resumeSession(
+      _handle: AgentPersistenceHandle,
+      config?: Partial<AgentSessionConfig>,
+      context?: AgentLaunchContext,
+    ) {
+      prompts.push(config?.daemonAppendSystemPrompt);
+      launchTools.push([...context!.paseoTools!.tools.keys()]);
+      return new TestAgentSession({ ...config, provider: "codex", cwd: workdir });
+    }
+  }
+  const profile = {
+    id: "reverse",
+    name: "Reverse",
+    settings: {
+      appendSystemPrompt: "Captured instructions",
+      mcp: { injectIntoAgents: true },
+      browserTools: { enabled: true },
+    },
+  };
+  const browserTool = {
+    name: "browser_navigate",
+    description: "Browser",
+    handler: async () => ({ content: [] }),
+  };
+  const manager = new AgentManager({
+    clients: { codex: new ProfileImportClient() },
+    registry: storage,
+    logger,
+    mcpBaseUrl: "http://127.0.0.1:9999/mcp/agents",
+    appendSystemPrompt: "Global instructions",
+    resolveSettingsProfile: () => profile,
+    paseoToolCatalogFactory: ({ browserToolsEnabled }) => {
+      const tools = new Map(browserToolsEnabled ? [[browserTool.name, browserTool]] : []);
+      return {
+        tools,
+        getTool: (name) => tools.get(name),
+        executeTool: async () => ({ content: [] }),
+      };
+    },
+  });
+  const agent = await manager.importProviderSession({
+    provider: "codex",
+    providerHandleId: "imported-session",
+    cwd: workdir,
+    workspaceId: "workspace",
+  });
+  try {
+    expect(agent.config.settingsProfile).toEqual(profile);
+    const captured = structuredClone(profile);
+    profile.settings.appendSystemPrompt = "Changed instructions";
+    profile.settings.browserTools.enabled = false;
+    manager.setAppendSystemPrompt("Changed global instructions");
+    await manager.reloadAgentSession(agent.id, undefined, { rehydrateFromDisk: true });
+    expect(manager.getSettingsProfile(agent.id)).toEqual(captured);
+    expect((await storage.get(agent.id))?.config?.settingsProfile).toEqual(captured);
+    expect(prompts).toEqual(["Captured instructions", "Captured instructions"]);
+    expect(launchTools).toEqual([["browser_navigate"], ["browser_navigate"]]);
+  } finally {
+    await manager.closeAgent(agent.id);
+    rmSync(workdir, { recursive: true, force: true });
+  }
 });
 
 test("importProviderSession imports the selected session without listing and publishes ready state", async () => {

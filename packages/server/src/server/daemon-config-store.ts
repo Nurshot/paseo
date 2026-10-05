@@ -3,6 +3,7 @@ import {
   savePersistedConfig,
   type PersistedConfig,
 } from "./persisted-config.js";
+import { isDeepStrictEqual } from "node:util";
 import { ProviderOverrideSchema } from "./agent/provider-launch-config.js";
 import {
   MutableDaemonConfigSchema,
@@ -29,6 +30,7 @@ interface SupportedMutableConfigPatch {
   terminalProfiles?: MutableDaemonConfig["terminalProfiles"];
   agentProfiles?: MutableDaemonConfig["agentProfiles"];
   agentSettingsProfiles?: MutableDaemonConfig["agentSettingsProfiles"];
+  agentSettingsProfilePatch?: MutableDaemonConfigPatch["agentSettingsProfilePatch"];
   skills?: MutableDaemonConfig["skills"];
   pluginsEnabled?: boolean;
   plugins?: MutableDaemonConfig["plugins"];
@@ -63,13 +65,26 @@ function normalizeAgentSettingsProfileBundle(
   };
 }
 
-function resolveAgentSettingsProfilePatch(
-  current: MutableDaemonConfig,
-  patch: SupportedMutableConfigPatch,
-): SupportedMutableConfigPatch {
-  const incoming = patch.agentSettingsProfiles ?? current.agentSettingsProfiles;
-  if (!incoming) return patch;
-  const bundle = normalizeAgentSettingsProfileBundle(current, incoming);
+function applyAgentSettingsProfileSettingsPatch(
+  bundle: NonNullable<MutableDaemonConfig["agentSettingsProfiles"]>,
+  patch: MutableDaemonConfigPatch["agentSettingsProfilePatch"],
+): NonNullable<MutableDaemonConfig["agentSettingsProfiles"]> {
+  if (!patch) return bundle;
+  const profileIndex = bundle.profiles.findIndex((profile) => profile.id === patch.profileId);
+  if (profileIndex < 0) throw new Error("Agent settings profile does not exist");
+  const profile = bundle.profiles[profileIndex];
+  const { profileId: _profileId, ...settingsPatch } = patch;
+  const profiles = [...bundle.profiles];
+  profiles[profileIndex] = {
+    ...profile,
+    settings: { ...profile.settings, ...settingsPatch },
+  };
+  return { ...bundle, profiles };
+}
+
+function requireActiveAgentSettingsProfile(
+  bundle: NonNullable<MutableDaemonConfig["agentSettingsProfiles"]>,
+) {
   const active = bundle.profiles.find((profile) => profile.id === bundle.activeProfileId);
   if (!active) throw new Error("The active agent settings profile does not exist");
   if (new Set(bundle.profiles.map((profile) => profile.id)).size !== bundle.profiles.length) {
@@ -78,7 +93,36 @@ function resolveAgentSettingsProfilePatch(
   if (bundle.profiles.some((profile) => !profile.name.trim())) {
     throw new Error("Agent settings profile names must not be blank");
   }
-  const base = patch.agentSettingsProfiles ? active.settings : current;
+  return active;
+}
+
+export class AgentSettingsProfileConflictError extends Error {
+  readonly code = "AGENT_SETTINGS_PROFILE_CONFLICT";
+
+  constructor() {
+    super("Agent settings profiles changed. Reload the settings and try again.");
+    this.name = "AgentSettingsProfileConflictError";
+  }
+}
+
+function resolveAgentSettingsProfilePatch(
+  current: MutableDaemonConfig,
+  patch: SupportedMutableConfigPatch,
+): SupportedMutableConfigPatch {
+  const incoming = patch.agentSettingsProfiles ?? current.agentSettingsProfiles;
+  if (!incoming) {
+    if (patch.agentSettingsProfilePatch) {
+      throw new Error("Agent settings profile does not exist");
+    }
+    return patch;
+  }
+  const bundle = applyAgentSettingsProfileSettingsPatch(
+    normalizeAgentSettingsProfileBundle(current, incoming),
+    patch.agentSettingsProfilePatch,
+  );
+  const active = requireActiveAgentSettingsProfile(bundle);
+  const updatesActiveProfile = patch.agentSettingsProfilePatch?.profileId === active.id;
+  const base = patch.agentSettingsProfiles || updatesActiveProfile ? active.settings : current;
   const settings = {
     appendSystemPrompt: patch.appendSystemPrompt ?? base.appendSystemPrompt,
     mcp: { injectIntoAgents: patch.mcp?.injectIntoAgents ?? base.mcp.injectIntoAgents },
@@ -91,6 +135,7 @@ function resolveAgentSettingsProfilePatch(
   if (
     [
       patch.agentSettingsProfiles,
+      patch.agentSettingsProfilePatch,
       patch.appendSystemPrompt,
       patch.mcp,
       patch.browserTools,
@@ -101,8 +146,9 @@ function resolveAgentSettingsProfilePatch(
     return patch;
   // Keep the ordinary settings as the live projection, so existing clients and
   // runtime owners use the same config path when a profile changes.
+  const { agentSettingsProfilePatch: _agentSettingsProfilePatch, ...rest } = patch;
   return {
-    ...patch,
+    ...rest,
     ...settings,
     agentSettingsProfiles: {
       ...bundle,
@@ -359,6 +405,9 @@ function pickSupportedPatchFields(patch: MutableDaemonConfigPatch): SupportedMut
     ...(patch.agentSettingsProfiles !== undefined
       ? { agentSettingsProfiles: patch.agentSettingsProfiles }
       : {}),
+    ...(patch.agentSettingsProfilePatch !== undefined
+      ? { agentSettingsProfilePatch: patch.agentSettingsProfilePatch }
+      : {}),
     ...(patch.pluginsEnabled !== undefined ? { pluginsEnabled: patch.pluginsEnabled } : {}),
     ...(patch.plugins !== undefined ? { plugins: patch.plugins } : {}),
   };
@@ -437,7 +486,15 @@ export class DaemonConfigStore {
   }
 
   public patch(partial: MutableDaemonConfigPatch): MutableDaemonConfig {
-    const parsedPatch = pickSupportedPatchFields(MutableDaemonConfigPatchSchema.parse(partial));
+    const { expectedAgentSettingsProfiles, ...request } =
+      MutableDaemonConfigPatchSchema.parse(partial);
+    if (
+      expectedAgentSettingsProfiles !== undefined &&
+      !isDeepStrictEqual(expectedAgentSettingsProfiles, this.current.agentSettingsProfiles ?? null)
+    ) {
+      throw new AgentSettingsProfileConflictError();
+    }
+    const parsedPatch = pickSupportedPatchFields(request);
     return this.applySupportedPatch(parsedPatch);
   }
 

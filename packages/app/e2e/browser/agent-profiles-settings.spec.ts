@@ -36,7 +36,9 @@ async function restoreGeneralSettings(client: DaemonClient, previous: MutableDae
             mcp: { injectIntoAgents: previous.mcp.injectIntoAgents },
             browserTools: { enabled: previous.browserTools.enabled },
             agentProfiles: previous.agentProfiles ?? [],
-            skills: { selection: previous.skills?.selection ?? { mode: "all" } },
+            skills: {
+              selection: previous.skills?.selection ?? { mode: "all" },
+            },
           },
         },
       ],
@@ -45,6 +47,56 @@ async function restoreGeneralSettings(client: DaemonClient, previous: MutableDae
 }
 
 test.describe("Agent profiles settings", () => {
+  test("stale profile removal shows an error and preserves a concurrent edit", async ({ page }) => {
+    const client = await connectDaemonClient<DaemonClient>({
+      clientIdPrefix: "stale-profile-removal",
+    });
+    const previous = (await client.getDaemonConfig()).config;
+    const settings = {
+      appendSystemPrompt: "",
+      mcp: { injectIntoAgents: false },
+      browserTools: { enabled: false },
+      agentProfiles: [],
+      skills: { selection: { mode: "custom" as const, skills: [] } },
+    };
+    try {
+      await client.patchDaemonConfig({
+        agentSettingsProfiles: {
+          activeProfileId: "coding",
+          profiles: [
+            { id: "coding", name: "Coding", settings },
+            { id: "reverse", name: "Reverse", settings },
+          ],
+        },
+      });
+      await openAgentProfileSettings(page);
+      const dialogPromise = page.waitForEvent("dialog");
+      const clickPromise = page.getByTestId("agent-settings-profile-remove").click();
+      const dialog = await dialogPromise;
+      const newerPreset = {
+        id: "concurrent",
+        name: "Concurrent preset",
+        provider: "mock",
+      };
+      await client.patchDaemonConfig({
+        agentSettingsProfilePatch: {
+          profileId: "coding",
+          agentProfiles: [newerPreset],
+        },
+      });
+      await dialog.accept();
+      await clickPromise;
+      await expect(page.getByText(/Agent settings profiles changed/)).toBeVisible();
+      const current = (await client.getDaemonConfig()).config.agentSettingsProfiles;
+      expect(current?.activeProfileId).toBe("coding");
+      expect(current?.profiles.map((profile) => profile.id)).toEqual(["coding", "reverse"]);
+      expect(current?.profiles[0].settings.agentProfiles).toEqual([newerPreset]);
+    } finally {
+      await restoreGeneralSettings(client, previous);
+      await client.close();
+    }
+  });
+
   test("repeated settings profile switches keep one copy of every Agents section", async ({
     page,
   }) => {
@@ -78,7 +130,10 @@ test.describe("Agent profiles settings", () => {
           await page.getByText(name, { exact: true }).click();
           await expect(page.getByTestId("agent-settings-profile-select")).toContainText(name);
           await expect(
-            page.getByRole("button", { name: "Open skills documentation", exact: true }),
+            page.getByRole("button", {
+              name: "Open skills documentation",
+              exact: true,
+            }),
           ).toHaveCount(1);
           await expect(
             page.getByRole("button", { name: "Choose skills", exact: true }),
@@ -94,7 +149,9 @@ test.describe("Agent profiles settings", () => {
   });
 
   test("general Agents profiles restore their own prompt and tool settings", async ({ page }) => {
-    const client = await connectDaemonClient<DaemonClient>({ clientIdPrefix: "settings-profiles" });
+    const client = await connectDaemonClient<DaemonClient>({
+      clientIdPrefix: "settings-profiles",
+    });
     const previous = (await client.getDaemonConfig()).config;
     try {
       await openAgentProfileSettings(page);
@@ -170,7 +227,9 @@ test.describe("Agent profiles settings", () => {
   test("new chats can select different settings profiles without changing the host default", async ({
     page,
   }) => {
-    const client = await connectDaemonClient<DaemonClient>({ clientIdPrefix: "profile-chats" });
+    const client = await connectDaemonClient<DaemonClient>({
+      clientIdPrefix: "profile-chats",
+    });
     const previous = (await client.getDaemonConfig()).config;
     const bundle = {
       activeProfileId: "coding",
@@ -337,7 +396,9 @@ test.describe("Agent profiles settings", () => {
         "false",
       );
       await page.keyboard.press("Escape");
-      await editAgentProfile(page, "Binary analyst preset", { notes: "Use for binary analysis." });
+      await editAgentProfile(page, "Binary analyst preset", {
+        notes: "Use for binary analysis.",
+      });
       await page.getByTestId("agent-settings-profile-select").getByRole("button").click();
       await page.getByText("Coding scope", { exact: true }).click();
       await expectAgentProfile(page, {

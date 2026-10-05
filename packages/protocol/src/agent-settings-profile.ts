@@ -23,3 +23,11 @@ export const AgentSettingsProfilesSchema = z.object({
 });
 
 export type AgentSettingsProfiles = z.infer<typeof AgentSettingsProfilesSchema>;
+
+export const AgentSettingsProfilePatchSchema = AgentSettingsSchema.partial()
+  .extend({
+    profileId: z.string().min(1),
+  })
+  .strict();
+
+export type AgentSettingsProfilePatch = z.infer<typeof AgentSettingsProfilePatchSchema>;

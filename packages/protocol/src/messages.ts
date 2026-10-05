@@ -1,5 +1,8 @@
 import { PluginRegistryIdentitySchema } from "./plugin-registry.js";
-import { AgentSettingsProfilesSchema } from "./agent-settings-profile.js";
+import {
+  AgentSettingsProfilePatchSchema,
+  AgentSettingsProfilesSchema,
+} from "./agent-settings-profile.js";
 import { AgentProfileSchema, AgentSkillSelectionSchema } from "./agent-profile.js";
 export {
   AgentProfileSchema,
@@ -228,6 +231,8 @@ export const MutableDaemonConfigPatchSchema = z
     terminalProfiles: z.array(TerminalProfileSchema).optional(),
     agentProfiles: z.array(AgentProfileSchema).optional(),
     agentSettingsProfiles: AgentSettingsProfilesSchema.optional(),
+    agentSettingsProfilePatch: AgentSettingsProfilePatchSchema.optional(),
+    expectedAgentSettingsProfiles: AgentSettingsProfilesSchema.nullable().optional(),
     pluginsEnabled: z.boolean().optional(),
     plugins: z.record(PluginIdSchema, PluginSourceSchema).optional(),
   })
@@ -1587,7 +1592,7 @@ function agentSkillsRequest<const Type extends string>(type: Type) {
 
 export const AgentSkillsGetStatusRequestSchema = agentSkillsRequest(
   "agent.skills.get_status.request",
-);
+).extend({ profileId: z.string().min(1).optional() });
 export const AgentSkillsReconcileRequestSchema = agentSkillsRequest(
   "agent.skills.reconcile.request",
 );
@@ -1600,6 +1605,7 @@ export const AgentSkillsSaveSelectionRequestSchema = z
     requestId: z.string(),
     selection: AgentSkillSelectionSchema,
     confirmedRemovals: z.array(z.string()).optional(),
+    profileId: z.string().min(1).optional(),
   })
   .strict();
 export const AgentSkillsImportLegacySelectionRequestSchema = z
@@ -3723,6 +3729,7 @@ export const ServerInfoStatusPayloadSchema = z
         // rather than letting a save appear to succeed.
         agentProfiles: z.boolean().optional(),
         // COMPAT(agentSettingsProfiles): added in v0.11, remove after 2027-04-05.
+        // The not-yet-released capability includes scoped preset writes.
         agentSettingsProfiles: z.boolean().optional(),
         // COMPAT(agentConfigApply): added in v0.3.2, remove gate after 2027-02-11.
         agentConfigApply: z.boolean().optional(),

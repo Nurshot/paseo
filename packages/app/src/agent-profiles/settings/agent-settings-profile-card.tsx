@@ -3,7 +3,7 @@ import { useMutation } from "@tanstack/react-query";
 import { View } from "react-native";
 import { useTranslation } from "react-i18next";
 import { StyleSheet } from "react-native-unistyles";
-import type { MutableDaemonConfig } from "@getpaseo/protocol/messages";
+import type { MutableDaemonConfig, MutableDaemonConfigPatch } from "@getpaseo/protocol/messages";
 import type { AgentSettingsProfiles } from "@getpaseo/protocol/agent-settings-profile";
 import { SettingsCard, SettingsRow, SettingsSelect } from "@/components/settings";
 import { Button } from "@/components/ui/button";
@@ -32,8 +32,12 @@ function LoadedAgentSettingsProfileCard({
   const toast = useToast();
   const [editor, setEditor] = useState<"create" | "rename" | null>(null);
   const save = useMutation({
-    mutationFn: (agentSettingsProfiles: AgentSettingsProfiles) =>
-      patchConfig({ agentSettingsProfiles }),
+    mutationFn: (
+      request: Pick<
+        MutableDaemonConfigPatch,
+        "agentSettingsProfiles" | "expectedAgentSettingsProfiles"
+      >,
+    ) => patchConfig(request),
     onError: (error: Error) => toast.error(error.message),
   });
 
@@ -59,7 +63,15 @@ function LoadedAgentSettingsProfileCard({
   );
   const active = bundle.profiles.find((profile) => profile.id === bundle.activeProfileId)!;
 
-  const saveAsync = save.mutateAsync;
+  const mutateAsync = save.mutateAsync;
+  const saveAsync = useCallback(
+    (agentSettingsProfiles: AgentSettingsProfiles) =>
+      mutateAsync({
+        agentSettingsProfiles,
+        expectedAgentSettingsProfiles: config.agentSettingsProfiles ?? null,
+      }),
+    [config.agentSettingsProfiles, mutateAsync],
+  );
   const options = useMemo(
     () => bundle.profiles.map((profile) => ({ label: profile.name, value: profile.id })),
     [bundle],

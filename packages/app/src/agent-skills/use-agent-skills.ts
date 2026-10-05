@@ -38,7 +38,7 @@ export function useAgentSkills(serverId: string) {
     queryKey,
     queryFn: () => {
       if (!client) throw new Error(t("settings.host.skills.unavailable"));
-      return client.getAgentSkillsStatus();
+      return client.getAgentSkillsStatus(activeProfileId);
     },
     enabled: supported && client !== null,
     retry: false,
@@ -77,7 +77,10 @@ export function useAgentSkills(serverId: string) {
   >({
     mutationFn: async ({ selection, confirmedRemovals }) => {
       if (!client) throw new Error(t("settings.host.skills.unavailable"));
-      return client.saveAgentSkillsSelection(selection, confirmedRemovals);
+      return client.saveAgentSkillsSelection(selection, {
+        confirmedRemovals,
+        ...(activeProfileId ? { profileId: activeProfileId } : {}),
+      });
     },
     onSuccess: setStatus,
     onError: (error) => report(t("settings.host.skills.saveSelectionFailed"), error),

@@ -8,6 +8,18 @@ export interface DraftKeyContext {
 
 export type DraftKeyInput = string | ((context: DraftKeyContext) => string);
 
+interface InitialSettingsProfileSelection {
+  selectedServerId: string | null;
+  initialServerId: string | null | undefined;
+  settingsProfileId: string | undefined;
+}
+
+export function resolveInitialSettingsProfileId(
+  input: InitialSettingsProfileSelection,
+): string | undefined {
+  return input.selectedServerId === input.initialServerId ? input.settingsProfileId : undefined;
+}
+
 export function resolveDraftKey(input: {
   draftKey: DraftKeyInput;
   selectedServerId: string | null;

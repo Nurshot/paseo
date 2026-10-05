@@ -13,6 +13,7 @@ import {
   buildDraftAgentControls,
   hasDraftContent,
   resolveDraftKey,
+  resolveInitialSettingsProfileId,
   type DraftKeyInput,
 } from "@/composer/draft/input-draft-core";
 import {
@@ -34,6 +35,7 @@ type AttachmentUpdater =
 
 interface AgentInputDraftComposerOptions {
   initialServerId: string | null;
+  initialSettingsProfileServerId?: string;
   initialValues?: CreateAgentInitialValues;
   initialFeatureValues?: Record<string, unknown>;
   isVisible?: boolean;
@@ -88,15 +90,23 @@ export function useAgentInputDraft(input: UseAgentInputDraftInput): AgentInputDr
   );
   const { config: hostConfig } = useDaemonConfig(formState.selectedServerId);
   const [profileChoices, setProfileChoices] = useState<Record<string, string>>({});
+  const profileChoiceKey = JSON.stringify([draftKey, formState.selectedServerId]);
+  const initialValues = composerOptions?.initialValues;
+  const initialSettingsProfileId = resolveInitialSettingsProfileId({
+    selectedServerId: formState.selectedServerId,
+    initialServerId:
+      composerOptions?.initialSettingsProfileServerId ?? composerOptions?.initialServerId,
+    settingsProfileId: initialValues?.settingsProfileId,
+  });
   const settingsProfileId =
-    profileChoices[draftKey] ??
-    composerOptions?.initialValues?.settingsProfileId ??
+    profileChoices[profileChoiceKey] ??
+    initialSettingsProfileId ??
     hostConfig?.agentSettingsProfiles?.activeProfileId;
   const selectSettingsProfile = useCallback(
     (id: string) => {
-      setProfileChoices((current) => ({ ...current, [draftKey]: id }));
+      setProfileChoices((current) => ({ ...current, [profileChoiceKey]: id }));
     },
-    [draftKey],
+    [profileChoiceKey],
   );
   const attachments = useDraftStore(
     useShallow((state) =>

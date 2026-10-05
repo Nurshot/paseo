@@ -43,6 +43,14 @@ so you can run a reverse engineering chat alongside a coding or review chat. Edi
 switching or removing a host profile does not change existing chats. The captured
 profile name appears beside the chat's model controls.
 
+Imported provider sessions also capture the host's selected settings profile.
+Subagents created through a chat's Paseo tools inherit that chat's captured profile,
+even if the host default has since changed.
+
+Saving settings or model presets targets the profile you were editing. If another
+client changed the profiles while you were managing them, Paseo asks you to reload
+before applying an outdated change.
+
 ## Apply settings in one click
 
 When creating an agent, open the model picker and select a saved profile under **Profiles**. Paseo applies its settings together; you can still adjust them before sending your prompt.

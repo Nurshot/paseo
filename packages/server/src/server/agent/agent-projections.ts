@@ -113,8 +113,12 @@ export function toAgentPayload(
   });
 
   const payload: AgentSnapshotPayload = {
-    settingsProfileId: agent.config.settingsProfile?.id,
-    settingsProfileName: agent.config.settingsProfile?.name,
+    ...(agent.config.settingsProfile
+      ? {
+          settingsProfileId: agent.config.settingsProfile.id,
+          settingsProfileName: agent.config.settingsProfile.name,
+        }
+      : {}),
     id: agent.id,
     provider: agent.provider,
     cwd: agent.cwd,
@@ -260,8 +264,12 @@ export function buildStoredAgentPayload(
 
 export function toAgentListItemPayload(agent: AgentSnapshotPayload): AgentListItemPayload {
   return {
-    settingsProfileId: agent.settingsProfileId,
-    settingsProfileName: agent.settingsProfileName,
+    ...(agent.settingsProfileId !== undefined
+      ? { settingsProfileId: agent.settingsProfileId }
+      : {}),
+    ...(agent.settingsProfileName !== undefined
+      ? { settingsProfileName: agent.settingsProfileName }
+      : {}),
     id: agent.id,
     shortId: agent.id.slice(0, 7),
     title: agent.title,

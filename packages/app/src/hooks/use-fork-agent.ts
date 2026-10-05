@@ -177,6 +177,7 @@ export function useForkAgent(
         agent.projectPlacement?.checkout?.cwd?.trim() || agent.cwd.trim() || undefined;
       if (draftSetup) {
         useWorkspaceDraftSubmissionStore.getState().setDraftSetup({
+          serverId,
           draftId,
           setup: draftSetup,
           sourceDirectory,

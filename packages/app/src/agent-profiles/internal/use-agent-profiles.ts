@@ -1,5 +1,5 @@
 import { useCallback } from "react";
-import type { AgentProfile } from "@getpaseo/protocol/messages";
+import type { AgentProfile, MutableDaemonConfigPatch } from "@getpaseo/protocol/messages";
 import { useDaemonConfig } from "@/hooks/use-daemon-config";
 import { useSessionStore } from "@/stores/session-store";
 import { supportsAgentProfiles } from "./capabilities";
@@ -9,8 +9,25 @@ export interface UseAgentProfilesResult {
   profiles: AgentProfile[] | null;
   /** False on daemons that predate agent profiles, or while disconnected. */
   isSupported: boolean;
-  /** Writes the whole list; there is no per-profile RPC. */
+  /** Replaces the preset list within the selected settings profile. */
   saveProfiles: (next: AgentProfile[]) => Promise<void>;
+}
+
+interface CreateAgentProfilesPatchInput {
+  settingsProfileId: string | undefined;
+  activeSettingsProfileId: string | undefined;
+  agentProfiles: AgentProfile[];
+}
+
+export function createAgentProfilesPatch({
+  settingsProfileId,
+  activeSettingsProfileId,
+  agentProfiles,
+}: CreateAgentProfilesPatchInput): MutableDaemonConfigPatch {
+  const profileId = settingsProfileId ?? activeSettingsProfileId;
+  return profileId
+    ? { agentSettingsProfilePatch: { profileId, agentProfiles } }
+    : { agentProfiles };
 }
 
 export function useAgentProfiles(
@@ -24,24 +41,28 @@ export function useAgentProfiles(
 
   const saveProfiles = useCallback(
     async (next: AgentProfile[]) => {
-      if (!settingsProfileId || !config?.agentSettingsProfiles) {
+      const activeSettingsProfileId = config?.agentSettingsProfiles?.activeProfileId;
+      if (!activeSettingsProfileId) {
         if (settingsProfileId && settingsProfileId !== "default")
           throw new Error("Agent settings profile does not exist");
-        await patchConfig({ agentProfiles: next });
+        await patchConfig(
+          createAgentProfilesPatch({
+            settingsProfileId: undefined,
+            activeSettingsProfileId: undefined,
+            agentProfiles: next,
+          }),
+        );
         return;
       }
-      const bundle = config?.agentSettingsProfiles;
-      const profile = bundle?.profiles.find((entry) => entry.id === settingsProfileId);
-      if (!bundle || !profile) throw new Error("Agent settings profile does not exist");
-      const edited = { ...profile, settings: { ...profile.settings, agentProfiles: next } };
-      await patchConfig({
-        agentSettingsProfiles: {
-          ...bundle,
-          profiles: bundle.profiles.map((entry) => (entry.id === profile.id ? edited : entry)),
-        },
-      });
+      await patchConfig(
+        createAgentProfilesPatch({
+          settingsProfileId,
+          activeSettingsProfileId,
+          agentProfiles: next,
+        }),
+      );
     },
-    [config?.agentSettingsProfiles, patchConfig, settingsProfileId],
+    [config?.agentSettingsProfiles?.activeProfileId, patchConfig, settingsProfileId],
   );
 
   const configuredProfiles =

@@ -274,6 +274,211 @@ describe("DaemonConfigStore", () => {
     expect(loadPersistedConfig(paseoHome)).toEqual(persisted);
   });
 
+  test("preset edits patch one settings profile without overwriting a newer edit to another", () => {
+    const paseoHome = mkdtempSync(path.join(tmpdir(), "paseo-profile-preset-patch-"));
+    tempDirs.push(paseoHome);
+    const store = new DaemonConfigStore(paseoHome, reloadableConfig({ version: 1 }));
+    const codingPreset = { id: "coding-preset", name: "Coding preset", provider: "codex" };
+    const reversePreset = { id: "reverse-preset", name: "Reverse preset", provider: "claude" };
+    const base = {
+      appendSystemPrompt: "",
+      mcp: { injectIntoAgents: false },
+      browserTools: { enabled: false },
+    };
+    store.patch({
+      agentSettingsProfiles: {
+        activeProfileId: "coding",
+        profiles: [
+          { id: "coding", name: "Coding", settings: { ...base, agentProfiles: [] } },
+          { id: "reverse", name: "Reverse", settings: { ...base, agentProfiles: [] } },
+        ],
+      },
+    });
+
+    const staleClientBundle = store.get().agentSettingsProfiles!;
+    const newerBundle = structuredClone(staleClientBundle);
+    const newerReverse = newerBundle.profiles.find((profile) => profile.id === "reverse")!;
+    newerReverse.settings.agentProfiles = [reversePreset];
+    store.patch({
+      agentSettingsProfiles: newerBundle,
+    });
+    store.patch({
+      agentSettingsProfilePatch: { profileId: "coding", agentProfiles: [codingPreset] },
+    });
+
+    expect(store.get().agentSettingsProfiles?.profiles).toEqual([
+      expect.objectContaining({
+        id: "coding",
+        settings: expect.objectContaining({ agentProfiles: [codingPreset] }),
+      }),
+      expect.objectContaining({
+        id: "reverse",
+        settings: expect.objectContaining({ agentProfiles: [reversePreset] }),
+      }),
+    ]);
+    expect(store.get().agentProfiles).toEqual([codingPreset]);
+  });
+
+  test("profile preconditions never become daemon configuration", () => {
+    const paseoHome = mkdtempSync(path.join(tmpdir(), "paseo-profile-preconditions-"));
+    tempDirs.push(paseoHome);
+    const store = new DaemonConfigStore(paseoHome, reloadableConfig({ version: 1 }));
+    store.patch({ expectedAgentSettingsProfiles: null, enableTerminalAgentHooks: true });
+    expect(store.get()).not.toHaveProperty("expectedAgentSettingsProfiles");
+    store.patch({ expectedAgentSettingsProfiles: null });
+    expect(store.get()).not.toHaveProperty("expectedAgentSettingsProfiles");
+    store.patch({
+      expectedAgentSettingsProfiles: null,
+      agentSettingsProfiles: {
+        activeProfileId: "coding",
+        profiles: [
+          {
+            id: "coding",
+            name: "Coding",
+            settings: {
+              appendSystemPrompt: "",
+              mcp: { injectIntoAgents: true },
+              browserTools: { enabled: true },
+            },
+          },
+        ],
+      },
+    });
+    expect(store.get()).not.toHaveProperty("expectedAgentSettingsProfiles");
+  });
+
+  test("scoped settings saves keep their target after the active profile changes", () => {
+    const paseoHome = mkdtempSync(path.join(tmpdir(), "paseo-scoped-settings-"));
+    tempDirs.push(paseoHome);
+    const store = new DaemonConfigStore(paseoHome, reloadableConfig({ version: 1 }));
+    const settings = {
+      appendSystemPrompt: "Original",
+      mcp: { injectIntoAgents: true },
+      browserTools: { enabled: true },
+      agentProfiles: [],
+      skills: { selection: { mode: "all" as const } },
+    };
+    store.patch({
+      agentSettingsProfiles: {
+        activeProfileId: "coding",
+        profiles: [
+          { id: "coding", name: "Coding", settings },
+          { id: "reverse", name: "Reverse", settings },
+        ],
+      },
+    });
+    store.patch({
+      agentSettingsProfiles: { ...store.get().agentSettingsProfiles!, activeProfileId: "reverse" },
+    });
+    const reverseBefore = store.get();
+    const savedSettings = {
+      appendSystemPrompt: "Coding change",
+      mcp: { injectIntoAgents: false },
+      browserTools: { enabled: false },
+      skills: { selection: { mode: "custom" as const, skills: [] } },
+    };
+    store.patch({ agentSettingsProfilePatch: { profileId: "coding", ...savedSettings } });
+    const after = store.get();
+    expect(after.agentSettingsProfiles?.profiles[0].settings).toEqual({
+      ...settings,
+      ...savedSettings,
+    });
+    expect(after.agentSettingsProfiles?.profiles[1]).toEqual(
+      reverseBefore.agentSettingsProfiles?.profiles[1],
+    );
+    expect(after.appendSystemPrompt).toBe(reverseBefore.appendSystemPrompt);
+    expect(after.mcp).toEqual(reverseBefore.mcp);
+    expect(after.browserTools).toEqual(reverseBefore.browserTools);
+    expect(after.skills).toEqual(reverseBefore.skills);
+  });
+
+  test("stale profile management rejects overwriting newer profile settings", () => {
+    const paseoHome = mkdtempSync(path.join(tmpdir(), "paseo-stale-profile-management-"));
+    tempDirs.push(paseoHome);
+    const store = new DaemonConfigStore(paseoHome, reloadableConfig({ version: 1 }));
+    const base = {
+      appendSystemPrompt: "",
+      mcp: { injectIntoAgents: true },
+      browserTools: { enabled: true },
+      agentProfiles: [],
+    };
+    store.patch({
+      agentSettingsProfiles: {
+        activeProfileId: "coding",
+        profiles: [
+          { id: "coding", name: "Coding", settings: base },
+          { id: "reverse", name: "Reverse", settings: base },
+        ],
+      },
+    });
+    const staleBundle = store.get().agentSettingsProfiles!;
+    const newerPreset = { id: "newer", name: "Newer preset", provider: "codex" };
+    store.patch({
+      agentSettingsProfilePatch: { profileId: "coding", agentProfiles: [newerPreset] },
+    });
+    const beforeStaleSave = store.get();
+    expect(() =>
+      store.patch({
+        agentSettingsProfiles: { ...staleBundle, activeProfileId: "reverse" },
+        expectedAgentSettingsProfiles: staleBundle,
+      }),
+    ).toThrow("changed");
+    expect(store.get()).toEqual(beforeStaleSave);
+    const latestBundle = store.get().agentSettingsProfiles!;
+    store.patch({
+      agentSettingsProfiles: { ...latestBundle, activeProfileId: "reverse" },
+      expectedAgentSettingsProfiles: latestBundle,
+    });
+    expect(store.get().agentSettingsProfiles?.activeProfileId).toBe("reverse");
+    expect(store.get().agentSettingsProfiles?.profiles[0].settings.agentProfiles).toEqual([
+      newerPreset,
+    ]);
+  });
+
+  test("preset edits reject missing settings profiles without recreating them", () => {
+    const paseoHome = mkdtempSync(path.join(tmpdir(), "paseo-missing-profile-patch-"));
+    tempDirs.push(paseoHome);
+    const store = new DaemonConfigStore(paseoHome, reloadableConfig({ version: 1 }));
+    const agentProfiles = [{ id: "coding-preset", name: "Coding preset", provider: "codex" }];
+
+    expect(() =>
+      store.patch({ agentSettingsProfilePatch: { profileId: "deleted", agentProfiles } }),
+    ).toThrow("does not exist");
+    expect(store.get().agentSettingsProfiles).toBeUndefined();
+
+    const base = {
+      appendSystemPrompt: "",
+      mcp: { injectIntoAgents: false },
+      browserTools: { enabled: false },
+    };
+    store.patch({
+      agentSettingsProfiles: {
+        activeProfileId: "coding",
+        profiles: [
+          { id: "coding", name: "Coding", settings: base },
+          { id: "deleted", name: "Deleted", settings: base },
+        ],
+      },
+    });
+    store.patch({
+      agentSettingsProfiles: {
+        activeProfileId: "coding",
+        profiles: store
+          .get()
+          .agentSettingsProfiles!.profiles.filter((profile) => profile.id !== "deleted"),
+      },
+    });
+    const afterDeletion = store.get();
+
+    expect(() =>
+      store.patch({ agentSettingsProfilePatch: { profileId: "deleted", agentProfiles } }),
+    ).toThrow("does not exist");
+    expect(store.get()).toEqual(afterDeletion);
+    expect(store.get().agentSettingsProfiles?.profiles.map((profile) => profile.id)).toEqual([
+      "coding",
+    ]);
+  });
+
   test("patch persists relay state and emits its field change", () => {
     const paseoHome = mkdtempSync(path.join(tmpdir(), "paseo-daemon-config-store-"));
     tempDirs.push(paseoHome);

@@ -14,6 +14,7 @@ import {
 } from "lucide-react-native";
 import type { TFunction } from "i18next";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useMutation } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { Alert, Pressable, Text, View } from "react-native";
 import { StyleSheet, useUnistyles, withUnistyles } from "react-native-unistyles";
@@ -98,8 +99,12 @@ function DynamicProviderIcon({ iconKey, size, color = "" }: DynamicProviderIconP
 
 const ThemedDynamicProviderIcon = withUnistyles(DynamicProviderIcon);
 
-const mutedColorMapping = (theme: Theme) => ({ color: theme.colors.foregroundMuted });
-const destructiveColorMapping = (theme: Theme) => ({ color: theme.colors.destructive });
+const mutedColorMapping = (theme: Theme) => ({
+  color: theme.colors.foregroundMuted,
+});
+const destructiveColorMapping = (theme: Theme) => ({
+  color: theme.colors.destructive,
+});
 
 const moveUpIcon = <ThemedArrowUp size={ICON_SIZE.sm} uniProps={mutedColorMapping} />;
 const moveDownIcon = <ThemedArrowDown size={ICON_SIZE.sm} uniProps={mutedColorMapping} />;
@@ -613,7 +618,9 @@ function RestartDaemonCard({ host }: { host: HostProfile }) {
     }
 
     void confirmDialog({
-      title: t("settings.host.daemon.restart.confirmTitle", { name: host.label }),
+      title: t("settings.host.daemon.restart.confirmTitle", {
+        name: host.label,
+      }),
       message: t("settings.host.daemon.restart.confirmMessage"),
       confirmLabel: t("settings.host.daemon.restart.confirm"),
       cancelLabel: t("common.actions.cancel"),
@@ -681,7 +688,9 @@ function UpdateDaemonCard({ host }: { host: HostProfile }) {
   const daemonClient = useHostRuntimeClient(host.serverId);
   const isConnected = useHostRuntimeIsConnected(host.serverId);
   const runtime = getHostRuntimeStore();
-  const [updateState, setUpdateState] = useState<DaemonUpdateState>({ status: "idle" });
+  const [updateState, setUpdateState] = useState<DaemonUpdateState>({
+    status: "idle",
+  });
   const isMountedRef = useRef(true);
   const unsubscribeRef = useRef<(() => void) | null>(null);
 
@@ -728,7 +737,9 @@ function UpdateDaemonCard({ host }: { host: HostProfile }) {
     }
 
     void confirmDialog({
-      title: t("settings.host.daemon.update.confirmTitle", { name: host.label }),
+      title: t("settings.host.daemon.update.confirmTitle", {
+        name: host.label,
+      }),
       message: t("settings.host.daemon.update.confirmMessage"),
       confirmLabel: t("settings.host.daemon.update.confirm"),
       cancelLabel: t("common.actions.cancel"),
@@ -864,20 +875,27 @@ function UpdateDaemonCard({ host }: { host: HostProfile }) {
   );
 }
 
-function InjectPaseoToolsCard({ serverId }: { serverId: string }) {
+export function InjectPaseoToolsCard({ serverId }: { serverId: string }) {
   const { t } = useTranslation();
   const isConnected = useHostRuntimeIsConnected(serverId);
   const { config, patchConfig } = useDaemonConfig(serverId);
-
-  const handleValueChange = useCallback(
-    (next: boolean) => {
-      void patchConfig({
+  const mutation = useMutation({
+    mutationFn: async (next: boolean) => {
+      const updated = await patchConfig({
         mcp: {
           injectIntoAgents: next,
         },
       });
+      if (!updated) throw new Error(t("workspace.terminal.hostDisconnected"));
+      return updated;
     },
-    [patchConfig],
+  });
+
+  const handleValueChange = useCallback(
+    (next: boolean) => {
+      mutation.mutate(next);
+    },
+    [mutation],
   );
 
   if (!isConnected) return null;
@@ -892,13 +910,28 @@ function InjectPaseoToolsCard({ serverId }: { serverId: string }) {
           <Text style={settingsStyles.rowHint}>
             {t("settings.host.orchestration.enableTools.hint")}
           </Text>
+          {mutation.isPending ? (
+            <Text style={settingsStyles.rowHint} testID="host-page-inject-mcp-saving">
+              {t("settings.host.orchestration.systemPrompt.saving")}
+            </Text>
+          ) : null}
         </View>
         <Switch
           value={config?.mcp.injectIntoAgents !== false}
           onValueChange={handleValueChange}
+          disabled={mutation.isPending}
           accessibilityLabel={t("settings.host.orchestration.enableTools.accessibilityLabel")}
         />
       </View>
+      {mutation.error ? (
+        <InlineAlert
+          size="sm"
+          variant="error"
+          title={t("common.errors.unableToSave")}
+          description={mutation.error.message}
+          testID="host-page-inject-mcp-error"
+        />
+      ) : null}
     </View>
   );
 }
@@ -982,7 +1015,7 @@ function EnableTerminalAgentHooksCard({ serverId }: { serverId: string }) {
   );
 }
 
-function AppendSystemPromptCard({ serverId }: { serverId: string }) {
+export function AppendSystemPromptCard({ serverId }: { serverId: string }) {
   const { t } = useTranslation();
   const profileScoped = useHostFeature(serverId, "agentSettingsProfiles");
   const isConnected = useHostRuntimeIsConnected(serverId);
@@ -990,7 +1023,14 @@ function AppendSystemPromptCard({ serverId }: { serverId: string }) {
   const persistedPrompt = config?.appendSystemPrompt ?? "";
   const [draft, setDraft] = useState(persistedPrompt);
   const [isEditing, setIsEditing] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
+  const save = useMutation({
+    mutationFn: async (prompt: string) => {
+      const updated = await patchConfig({ appendSystemPrompt: prompt });
+      if (!updated) throw new Error(t("workspace.terminal.hostDisconnected"));
+      return updated;
+    },
+    onSuccess: () => setIsEditing(false),
+  });
   const header = useMemo<SheetHeader>(
     () => ({ title: t("settings.host.orchestration.systemPrompt.sheetTitle") }),
     [t],
@@ -1003,28 +1043,21 @@ function AppendSystemPromptCard({ serverId }: { serverId: string }) {
   const hasChanges = draft !== persistedPrompt;
 
   const handleOpen = useCallback(() => {
+    save.reset();
     setDraft(persistedPrompt);
     setIsEditing(true);
-  }, [persistedPrompt]);
+  }, [persistedPrompt, save]);
 
   const handleClose = useCallback(() => {
-    if (isSaving) return;
+    if (save.isPending) return;
+    save.reset();
     setDraft(persistedPrompt);
     setIsEditing(false);
-  }, [isSaving, persistedPrompt]);
+  }, [persistedPrompt, save]);
 
   const handleSave = useCallback(() => {
-    setIsSaving(true);
-    void patchConfig({ appendSystemPrompt: draft })
-      .then(() => {
-        setIsEditing(false);
-        return;
-      })
-      .catch((error) => {
-        console.error("[HostPage] Failed to save append system prompt", error);
-      })
-      .finally(() => setIsSaving(false));
-  }, [draft, patchConfig]);
+    save.mutate(draft);
+  }, [draft, save]);
 
   const handleReset = useCallback(() => {
     setDraft(persistedPrompt);
@@ -1074,12 +1107,21 @@ function AppendSystemPromptCard({ serverId }: { serverId: string }) {
             onChangeText={setDraft}
             placeholder={t("settings.host.orchestration.systemPrompt.placeholder")}
           />
+          {save.error ? (
+            <InlineAlert
+              size="sm"
+              variant="error"
+              title={t("common.errors.unableToSave")}
+              description={save.error.message}
+              testID="host-page-append-system-prompt-error"
+            />
+          ) : null}
           <View style={styles.appendPromptActions}>
             <Button
               variant="ghost"
               size="sm"
               onPress={handleReset}
-              disabled={!hasChanges || isSaving}
+              disabled={!hasChanges || save.isPending}
               testID="host-page-append-system-prompt-reset"
             >
               {t("settings.host.orchestration.systemPrompt.reset")}
@@ -1088,10 +1130,10 @@ function AppendSystemPromptCard({ serverId }: { serverId: string }) {
               variant="default"
               size="sm"
               onPress={handleSave}
-              disabled={!hasChanges || isSaving}
+              disabled={!hasChanges || save.isPending}
               testID="host-page-append-system-prompt-save"
             >
-              {isSaving
+              {save.isPending
                 ? t("settings.host.orchestration.systemPrompt.saving")
                 : t("settings.host.orchestration.systemPrompt.save")}
             </Button>
@@ -1288,7 +1330,9 @@ function RemoveHostSection({
           <Text style={styles.confirmText}>
             {stopsOwnedDaemon
               ? t("settings.host.daemon.remove.localConfirmMessage")
-              : t("settings.host.daemon.remove.confirmMessage", { name: host.label })}
+              : t("settings.host.daemon.remove.confirmMessage", {
+                  name: host.label,
+                })}
           </Text>
           <View style={styles.confirmActions}>
             <Button

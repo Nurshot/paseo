@@ -1267,12 +1267,7 @@ export class AgentManager {
       config = { ...request.config, internal: config.internal };
       options = { ...options, env: request.env };
     }
-    if (!config.internal && !config.settingsProfile) {
-      const profile = this.resolveSettingsProfile?.(config.settingsProfileId);
-      if (config.settingsProfileId && !profile)
-        throw new Error("Agent settings profile does not exist");
-      if (profile) config = { ...config, settingsProfile: structuredClone(profile) };
-    }
+    config = this.captureSettingsProfile(config);
     await this.deleteAgentState(resolvedAgentId);
     const { storedConfig, launchConfig, paseoToolPolicy } = await this.prepareSessionConfig(
       config,
@@ -1462,10 +1457,10 @@ export class AgentManager {
     }
 
     const { storedConfig, launchConfig, paseoToolPolicy } = await this.prepareSessionConfig(
-      {
+      this.captureSettingsProfile({
         provider: input.provider,
         cwd: input.cwd,
-      },
+      }),
       resolvedAgentId,
     );
     this.paseoToolPolicies.set(resolvedAgentId, paseoToolPolicy);
@@ -1475,7 +1470,12 @@ export class AgentManager {
       storedConfig.cwd,
       paseoToolPolicy,
       undefined,
-      { reason: "import", purpose: "interactive", workspaceId: input.workspaceId },
+      {
+        reason: "import",
+        purpose: "interactive",
+        workspaceId: input.workspaceId,
+        browserToolsEnabled: storedConfig.settingsProfile?.settings.browserTools.enabled,
+      },
     );
     const providerLaunchConfig = this.resolveProviderLaunchConfig(launchConfig, launchContext);
     const imported = await client.importSession(
@@ -1487,9 +1487,10 @@ export class AgentManager {
     );
     let handedToRegistration = false;
     try {
-      const importedConfig = await this.normalizeConfig(
-        stripInternalPaseoMcpServer(imported.config),
-      );
+      const importedConfig = await this.normalizeConfig({
+        ...stripInternalPaseoMcpServer(imported.config),
+        settingsProfile: storedConfig.settingsProfile,
+      });
       const timelineRows = buildImportedTimelineRows(imported.timeline);
       const initialTitle = resolveImportedAgentTitle(importedConfig, timelineRows);
 
@@ -1527,17 +1528,18 @@ export class AgentManager {
     overrides?: Partial<AgentSessionConfig>,
     options?: { rehydrateFromDisk?: boolean },
   ): Promise<ManagedAgent> {
+    const rehydrateFromDisk = options?.rehydrateFromDisk ?? false;
     return this.trackAgentRegistrationOperation(
       this.runLifecycleMutation(agentId, () =>
-        this.reloadAgentSessionInternal(agentId, overrides, options),
+        this.reloadAgentSessionInternal(agentId, overrides, { rehydrateFromDisk }),
       ),
     );
   }
 
   private async reloadAgentSessionInternal(
     agentId: string,
-    overrides?: Partial<AgentSessionConfig>,
-    options?: { rehydrateFromDisk?: boolean },
+    overrides: Partial<AgentSessionConfig> | undefined,
+    options: { rehydrateFromDisk: boolean },
   ): Promise<ManagedAgent> {
     this.assertAcceptingAgentRegistrations();
     let existing = this.requireSessionAgent(agentId);
@@ -1545,7 +1547,7 @@ export class AgentManager {
       await this.cancelAgentRunBefore(agentId, "reload");
       existing = this.requireSessionAgent(agentId);
     }
-    const rehydrateFromDisk = options?.rehydrateFromDisk ?? false;
+    const { rehydrateFromDisk } = options;
     const preservedHistoryPrimed = existing.historyPrimed;
     const preservedLastUsage = existing.lastUsage;
     const preservedLastError = existing.lastError;
@@ -1574,6 +1576,7 @@ export class AgentManager {
         reason: "refresh",
         purpose: "interactive",
         workspaceId: existing.workspaceId,
+        browserToolsEnabled: storedConfig.settingsProfile?.settings.browserTools.enabled,
       },
     );
     const providerLaunchConfig = this.resolveProviderLaunchConfig(launchConfig, launchContext);
@@ -5224,6 +5227,14 @@ export class AgentManager {
           daemonAppendSystemPrompt,
         }
       : next;
+  }
+
+  private captureSettingsProfile(config: AgentSessionConfig): AgentSessionConfig {
+    if (config.internal || config.settingsProfile) return config;
+    const profile = this.resolveSettingsProfile?.(config.settingsProfileId);
+    if (config.settingsProfileId && !profile)
+      throw new Error("Agent settings profile does not exist");
+    return profile ? { ...config, settingsProfile: structuredClone(profile) } : config;
   }
 
   private async buildLaunchContext(
