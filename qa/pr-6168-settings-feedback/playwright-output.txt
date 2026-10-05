@@ -1,0 +1,98 @@
+
+> @getpaseo/app@0.11.0-beta.4 test:e2e
+> playwright test --project=browser e2e/browser/agent-profiles-settings.spec.ts --workers=1
+
+[metro] Starting project at C:\Users\root\Documents\Codex\2026-10-05\https-github-com-getpaseo-paseo-pull\work\paseo-pr6168\packages\app
+[metro] Using src/app as the root directory for Expo Router.
+[metro] Experimental Expo Autolinking module resolver is enabled.
+[metro] React Compiler enabled
+[metro] Starting Metro Bundler
+[metro] Waiting on http://localhost:50158
+[metro] Logs for your project will appear below.
+[metro] Web packages\app\index.ts ░░░░░░░░░░░░░░░░  0.0% (0/1)
+[metro] | (node:1416) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[metro] | (Use `node --trace-warnings ...` to show where the warning was created)
+[metro] | (node:23476) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[metro] | (Use `node --trace-warnings ...` to show where the warning was created)
+[metro] | (node:29276) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[metro] | (Use `node --trace-warnings ...` to show where the warning was created)
+[metro] Web Bundled 3259ms packages\app\index.ts (5433 modules)
+[e2e] Metro warmed on port 50158
+
+Running 11 tests using 1 worker
+
+(node:31180) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:31180) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+[e2e] Worker 0 daemon started on port 65302, home: C:\Users\root\AppData\Local\Temp\paseo-e2e-worker-0-RIdGKl
+[metro] Web packages\app\index.ts ░░░░░░░░░░░░░░░░  0.0% (0/1)
+[metro] Web Bundled 170ms packages\app\index.ts (1 module)
+[metro]  LOG  [web] Logs will appear in the browser console
+[metro] Web Bundled 69ms packages\app\src\attachments\web\indexeddb-attachment-store.ts (1 module)
+  ok  1 [browser] › e2e\browser\agent-profiles-settings.spec.ts:95:7 › Agent profiles settings › Paseo tools save shows pending state and persists through the real daemon (4.2s)
+[metro] Web Bundled 261ms packages\app\index.ts (1 module)
+[metro] Web packages\app\src\attachments\web\indexeddb-attachment-store.ts ░░░░░░░░░░░░░░░░  0.0% (0/1)
+[metro] Web Bundled 5ms packages\app\src\attachments\web\indexeddb-attachment-store.ts (1 module)
+[metro]  LOG  [web] Logs will appear in the browser console
+  ok  2 [browser] › e2e\browser\agent-profiles-settings.spec.ts:120:7 › Agent profiles settings › Paseo tools save shows a real daemon rejection and supports retry (4.5s)
+[metro] Web Bundled 167ms packages\app\index.ts (1 module)
+[metro] Web Bundled 5ms packages\app\src\attachments\web\indexeddb-attachment-store.ts (1 module)
+[metro]  LOG  [web] Logs will appear in the browser console
+  ok  3 [browser] › e2e\browser\agent-profiles-settings.spec.ts:154:7 › Agent profiles settings › system prompt save keeps the editor pending and persists through the real daemon (4.2s)
+[metro] Web Bundled 167ms packages\app\index.ts (1 module)
+[metro] Web Bundled 6ms packages\app\src\attachments\web\indexeddb-attachment-store.ts (1 module)
+[metro]  LOG  [web] Logs will appear in the browser console
+  ok  4 [browser] › e2e\browser\agent-profiles-settings.spec.ts:184:7 › Agent profiles settings › system prompt save shows a real daemon rejection and retains the draft for retry (4.3s)
+[metro] Web Bundled 166ms packages\app\index.ts (1 module)
+[metro] Web Bundled 7ms packages\app\src\attachments\web\indexeddb-attachment-store.ts (1 module)
+[metro]  LOG  [web] Logs will appear in the browser console
+  ok  5 [browser] › e2e\browser\agent-profiles-settings.spec.ts:225:7 › Agent profiles settings › stale profile removal shows an error and preserves a concurrent edit (3.8s)
+[metro] Web Bundled 166ms packages\app\index.ts (1 module)
+[metro] Web Bundled 7ms packages\app\src\attachments\web\indexeddb-attachment-store.ts (1 module)
+[metro]  LOG  [web] Logs will appear in the browser console
+  ok  6 [browser] › e2e\browser\agent-profiles-settings.spec.ts:275:7 › Agent profiles settings › repeated settings profile switches keep one copy of every Agents section (11.3s)
+[metro] Web packages\app\index.ts ░░░░░░░░░░░░░░░░  0.0% (0/1)
+[metro] Web Bundled 166ms packages\app\index.ts (1 module)
+[metro] Web Bundled 5ms packages\app\src\attachments\web\indexeddb-attachment-store.ts (1 module)
+[metro]  LOG  [web] Logs will appear in the browser console
+[metro] Web Bundled 168ms packages\app\index.ts (1 module)
+[metro] Web packages\app\src\attachments\web\indexeddb-attachment-store.ts ░░░░░░░░░░░░░░░░  0.0% (0/1)
+[metro] Web Bundled 6ms packages\app\src\attachments\web\indexeddb-attachment-store.ts (1 module)
+[metro]  LOG  [web] Logs will appear in the browser console
+  ok  7 [browser] › e2e\browser\agent-profiles-settings.spec.ts:326:7 › Agent profiles settings › general Agents profiles restore their own prompt and tool settings (8.0s)
+[metro] Web Bundled 179ms packages\app\index.ts (1 module)
+[metro] Web Bundled 6ms packages\app\src\attachments\web\indexeddb-attachment-store.ts (1 module)
+[metro]  LOG  [web] Logs will appear in the browser console
+[metro] Web packages\app\index.ts ░░░░░░░░░░░░░░░░  0.0% (0/1)
+[metro] Web Bundled 169ms packages\app\index.ts (1 module)
+[metro] Web Bundled 7ms packages\app\src\attachments\web\indexeddb-attachment-store.ts (1 module)
+[metro]  LOG  [web] Logs will appear in the browser console
+  ok  8 [browser] › e2e\browser\agent-profiles-settings.spec.ts:402:7 › Agent profiles settings › new chats can select different settings profiles without changing the host default (12.2s)
+[metro] Web Bundled 173ms packages\app\index.ts (1 module)
+[metro] Web Bundled 5ms packages\app\src\attachments\web\indexeddb-attachment-store.ts (1 module)
+[metro]  LOG  [web] Logs will appear in the browser console
+[metro] Web packages\app\index.ts ░░░░░░░░░░░░░░░░  0.0% (0/1)
+[metro] Web Bundled 167ms packages\app\index.ts (1 module)
+[metro] Web Bundled 7ms packages\app\src\attachments\web\indexeddb-attachment-store.ts (1 module)
+[metro]  LOG  [web] Logs will appear in the browser console
+  ok  9 [browser] › e2e\browser\agent-profiles-settings.spec.ts:534:7 › Agent profiles settings › switching general profiles changes Agent profiles and skill selection (8.2s)
+[metro] Web Bundled 177ms packages\app\index.ts (1 module)
+[metro] Web Bundled 5ms packages\app\src\attachments\web\indexeddb-attachment-store.ts (1 module)
+[metro]  LOG  [web] Logs will appear in the browser console
+[metro] Web Bundled 189ms packages\app\index.ts (1 module)
+[metro] Web Bundled 6ms packages\app\src\attachments\web\indexeddb-attachment-store.ts (1 module)
+[metro]  LOG  [web] Logs will appear in the browser console
+[metro] Web Bundled 180ms packages\app\index.ts (1 module)
+[metro] Web Bundled 5ms packages\app\src\attachments\web\indexeddb-attachment-store.ts (1 module)
+[metro]  LOG  [web] Logs will appear in the browser console
+  ok 10 [browser] › e2e\browser\agent-profiles-settings.spec.ts:642:7 › Agent profiles settings › legacy model favourites migrate into provider-and-model-only host profiles (8.6s)
+[metro] Web Bundled 169ms packages\app\index.ts (1 module)
+[metro] Web Bundled 6ms packages\app\src\attachments\web\indexeddb-attachment-store.ts (1 module)
+[metro] Web packages\app\src\attachments\web\indexeddb-attachment-store.ts ░░░░░░░░░░░░░░░░  0.0% (0/1)
+[metro]  LOG  [web] Logs will appear in the browser console
+  ok 11 [browser] › e2e\browser\agent-profiles-settings.spec.ts:669:7 › Agent profiles settings › host owner creates, edits, reorders and removes agent profiles (7.5s)
+[e2e] Worker 0 daemon stopped
+[e2e] Metro stopped
+
+  11 passed (1.9m)

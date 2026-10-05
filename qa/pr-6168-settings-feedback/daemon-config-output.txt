@@ -1,0 +1,9 @@
+
+ RUN  v4.1.7 C:/Users/root/Documents/Codex/2026-10-05/https-github-com-getpaseo-paseo-pull/work/paseo-pr6168
+
+
+ Test Files  1 passed (1)
+      Tests  42 passed (42)
+   Start at  23:13:29
+   Duration  804ms (transform 268ms, setup 0ms, import 504ms, tests 150ms, environment 0ms)
+

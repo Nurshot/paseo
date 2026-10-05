@@ -1,0 +1,96 @@
+╭───────────────────────────────────╮
+│ lefthook v2.1.6  hook: pre-commit │
+╰───────────────────────────────────╯
+┃  format ❯ 
+
+
+> paseo@0.11.0-beta.4 format:check:files
+> oxfmt --check packages/app/e2e/browser/agent-profiles-settings.spec.ts packages/app/e2e/support/helpers/isolated-host-daemon.ts packages/app/src/agent-profiles/settings/agent-settings-profile-picker.tsx packages/app/src/composer/draft/input-draft.live.test.tsx packages/app/src/composer/draft/input-draft.ts packages/app/src/screens/settings/host-page.tsx packages/app/src/stores/draft-store/index.ts packages/app/src/stores/draft-store/migration.test.ts packages/app/src/stores/draft-store/migration.ts packages/app/src/stores/draft-store/state.ts
+
+Checking formatting...
+
+All matched files use the correct format.
+Finished in 112ms on 10 files using 12 threads.
+
+┃  lint ❯ 
+
+
+> paseo@0.11.0-beta.4 lint
+> oxlint packages/app/e2e/browser/agent-profiles-settings.spec.ts packages/app/e2e/support/helpers/isolated-host-daemon.ts packages/app/src/agent-profiles/settings/agent-settings-profile-picker.tsx packages/app/src/composer/draft/input-draft.live.test.tsx packages/app/src/composer/draft/input-draft.ts packages/app/src/screens/settings/host-page.tsx packages/app/src/stores/draft-store/index.ts packages/app/src/stores/draft-store/migration.test.ts packages/app/src/stores/draft-store/migration.ts packages/app/src/stores/draft-store/state.ts
+
+Found 0 warnings and 0 errors.
+Finished in 245ms on 10 files with 177 rules using 12 threads.
+
+┃  typecheck ❯ 
+
+
+> paseo@0.11.0-beta.4 typecheck
+> npm run typecheck --workspaces --if-present
+
+
+> @getpaseo/builtin-plugins@0.11.0-beta.4 typecheck
+> tsgo -p tsconfig.json --noEmit
+
+
+> @getpaseo/expo-two-way-audio@0.11.0-beta.4 typecheck
+> tsgo --noEmit
+
+
+> @getpaseo/highlight@0.11.0-beta.4 typecheck
+> tsgo --noEmit
+
+
+> @getpaseo/plugin@0.11.0-beta.4 typecheck
+> tsgo --noEmit && tsgo -p tsconfig.examples.json --noEmit
+
+
+> @getpaseo/protocol@0.11.0-beta.4 pretypecheck
+> npm run generate:validators
+
+
+> @getpaseo/protocol@0.11.0-beta.4 generate:validators
+> node scripts/generate-validation-aot.mjs
+
+generated src\generated\validation\ws-outbound.aot.ts from codegen\ws-outbound.compile.ts (WSOutboundMessageSchema)
+
+> @getpaseo/protocol@0.11.0-beta.4 typecheck
+> tsgo --noEmit
+
+
+> @getpaseo/client@0.11.0-beta.4 typecheck
+> tsgo --noEmit
+
+
+> @getpaseo/server@0.11.0-beta.4 typecheck
+> tsgo -p tsconfig.server.typecheck.json --noEmit
+
+
+> @getpaseo/app@0.11.0-beta.4 typecheck
+> tsgo --noEmit
+
+
+> @getpaseo/relay@0.11.0-beta.4 typecheck
+> tsgo --noEmit
+
+
+> @getpaseo/website@0.11.0-beta.4 typecheck
+> tsgo --noEmit
+
+
+> @getpaseo/desktop@0.11.0-beta.4 typecheck
+> tsgo --noEmit -p tsconfig.json
+
+
+> @getpaseo/cli@0.11.0-beta.4 typecheck
+> tsgo --noEmit
+
+
+                                      
+  ────────────────────────────────────
+summary: (done in 17.18 seconds)      
+✓ format (0.69 seconds)
+✓ lint (0.70 seconds)
+✓ typecheck (17.07 seconds)
+[pr6168 9694b71c] Verify profile settings feedback in app and align composer controls
+ 11 files changed, 470 insertions(+), 238 deletions(-)
+ delete mode 100644 packages/app/src/screens/settings/host-page-orchestration.test.tsx

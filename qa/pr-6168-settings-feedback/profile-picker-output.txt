@@ -1,0 +1,37 @@
+
+> @getpaseo/app@0.11.0-beta.4 test:e2e
+> playwright test --project=browser e2e/browser/agent-profiles-settings.spec.ts --grep new chats can select
+
+[metro] Starting project at C:\Users\root\Documents\Codex\2026-10-05\https-github-com-getpaseo-paseo-pull\work\paseo-pr6168\packages\app
+[metro] Using src/app as the root directory for Expo Router.
+[metro] Experimental Expo Autolinking module resolver is enabled.
+[metro] React Compiler enabled
+[metro] Starting Metro Bundler
+[metro] Waiting on http://localhost:63650
+[metro] Logs for your project will appear below.
+[metro] Web packages\app\index.ts ░░░░░░░░░░░░░░░░  0.0% (0/1)
+[metro] Web packages\app\index.ts ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓░ 99.9% (5432/5433)
+[metro] Web Bundled 4343ms packages\app\index.ts (5433 modules)
+[e2e] Metro warmed on port 63650
+
+Running 1 test using 1 worker
+
+(node:9344) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:9344) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+[e2e] Worker 0 daemon started on port 55275, home: C:\Users\root\AppData\Local\Temp\paseo-e2e-worker-0-uCkh4T
+[metro] Web packages\app\index.ts ░░░░░░░░░░░░░░░░  0.0% (0/1)
+[metro] Web Bundled 250ms packages\app\index.ts (1 module)
+[metro] Web packages\app\src\attachments\web\indexeddb-attachment-store.ts ░░░░░░░░░░░░░░░░  0.0% (0/1)
+[metro]  LOG  [web] Logs will appear in the browser console
+[metro] Web Bundled 209ms packages\app\src\attachments\web\indexeddb-attachment-store.ts (86 modules)
+[metro] Web packages\app\index.ts ░░░░░░░░░░░░░░░░  0.0% (0/1)
+[metro] Web Bundled 173ms packages\app\index.ts (1 module)
+[metro] Web Bundled 6ms packages\app\src\attachments\web\indexeddb-attachment-store.ts (1 module)
+[metro]  LOG  [web] Logs will appear in the browser console
+  ok 1 [browser] › e2e\browser\agent-profiles-settings.spec.ts:402:7 › Agent profiles settings › new chats can select different settings profiles without changing the host default (18.3s)
+[e2e] Worker 0 daemon stopped
+[e2e] Metro stopped
+
+  1 passed (1.3m)

@@ -1,0 +1,8 @@
+{
+  "platform": "Windows Electron 44.2.0",
+  "sourceCommit": "9694b71c95c92fe2f9a36b82fcb276dd84e5d188",
+  "profileHeight": 28,
+  "centerDifference": 0,
+  "screenshot": "profile-toolbar-desktop-windows.png",
+  "result": "PASS: installed toolbar matches shared control alignment"
+}
