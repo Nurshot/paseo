@@ -1,9 +1,12 @@
 import { expect, test } from "../support/fixtures";
+import type { Page, TestInfo } from "@playwright/test";
 import type { MutableDaemonConfig } from "@getpaseo/protocol/messages";
+import type { AgentSettingsProfiles } from "@getpaseo/protocol/agent-settings-profile";
 import type { DaemonClient } from "@getpaseo/client/internal/daemon-client";
 import { connectDaemonClient } from "../support/helpers/daemon-client-loader";
 import { openAgentRoute, seedMockAgentWorkspace } from "../support/helpers/mock-agent";
 import { submitMessage } from "../support/helpers/composer";
+import { installDaemonWebSocketGate } from "../support/helpers/daemon-websocket-gate";
 import {
   createAgentProfile,
   createAgentProfileFromEmptyState,
@@ -22,6 +25,48 @@ import {
 } from "../support/helpers/agent-profiles";
 
 const MOCK_PROVIDER_LABEL = "Mock Load Test";
+
+async function openOrchestrationSettings(page: Page) {
+  const gate = await installDaemonWebSocketGate(page);
+  const client = await connectDaemonClient<DaemonClient>({
+    clientIdPrefix: "orchestration-feedback",
+  });
+  const previous = (await client.getDaemonConfig()).config;
+  const settings = {
+    appendSystemPrompt: "Stored prompt",
+    mcp: { injectIntoAgents: false },
+    browserTools: { enabled: false },
+    agentProfiles: [],
+    skills: { selection: { mode: "custom" as const, skills: [] } },
+  };
+  const bundle: AgentSettingsProfiles = {
+    activeProfileId: "coding",
+    profiles: [
+      { id: "coding", name: "Coding", settings },
+      { id: "reverse", name: "Reverse", settings },
+    ],
+  };
+  async function close() {
+    gate.setServerMessageSuppressed("status", false);
+    await restoreGeneralSettings(client, previous);
+    await client.close();
+  }
+  try {
+    await client.patchDaemonConfig({ agentSettingsProfiles: bundle });
+    await openAgentProfileSettings(page);
+    await expect(page.getByTestId("agent-settings-profile-select")).toContainText("Coding");
+    return { gate, client, bundle, close };
+  } catch (error) {
+    await close();
+    throw error;
+  }
+}
+
+async function captureSettingsFeedback(page: Page, testInfo: TestInfo, name: string) {
+  const path = testInfo.outputPath(`${name}.png`);
+  await page.screenshot({ path, fullPage: true });
+  await testInfo.attach(name, { path, contentType: "image/png" });
+}
 
 async function restoreGeneralSettings(client: DaemonClient, previous: MutableDaemonConfig) {
   await client.patchDaemonConfig({
@@ -47,6 +92,136 @@ async function restoreGeneralSettings(client: DaemonClient, previous: MutableDae
 }
 
 test.describe("Agent profiles settings", () => {
+  test("Paseo tools save shows pending state and persists through the real daemon", async ({
+    page,
+  }, testInfo) => {
+    const fixture = await openOrchestrationSettings(page);
+    try {
+      const card = page.getByTestId("host-page-inject-mcp-card");
+      const toggle = card.getByRole("switch");
+      await expect(toggle).not.toBeChecked();
+      fixture.gate.holdNextClientRequest("set_daemon_config_request");
+      await toggle.click();
+      await fixture.gate.waitForHeldClientRequest();
+      await expect(page.getByTestId("host-page-inject-mcp-saving")).toBeVisible();
+      await expect(toggle).toBeDisabled();
+      await captureSettingsFeedback(page, testInfo, "mcp-save-pending");
+      fixture.gate.releaseHeldClientRequest();
+      await expect(toggle).toBeChecked();
+      await expect(toggle).toBeEnabled();
+      await expect(page.getByTestId("host-page-inject-mcp-saving")).toHaveCount(0);
+      expect((await fixture.client.getDaemonConfig()).config.mcp.injectIntoAgents).toBe(true);
+      await captureSettingsFeedback(page, testInfo, "mcp-save-success");
+    } finally {
+      await fixture.close();
+    }
+  });
+
+  test("Paseo tools save shows a real daemon rejection and supports retry", async ({
+    page,
+  }, testInfo) => {
+    const fixture = await openOrchestrationSettings(page);
+    try {
+      const toggle = page.getByTestId("host-page-inject-mcp-card").getByRole("switch");
+      fixture.gate.setServerMessageSuppressed("status", true);
+      await fixture.client.patchDaemonConfig({
+        agentSettingsProfiles: {
+          activeProfileId: "reverse",
+          profiles: [fixture.bundle.profiles[1]],
+        },
+      });
+      await toggle.click();
+      const error = page.getByTestId("host-page-inject-mcp-error");
+      await expect(error).toContainText("Agent settings profile does not exist");
+      await expect(toggle).not.toBeChecked();
+      await expect(toggle).toBeEnabled();
+      expect((await fixture.client.getDaemonConfig()).config.mcp.injectIntoAgents).toBe(false);
+      await captureSettingsFeedback(page, testInfo, "mcp-save-error");
+      await fixture.client.patchDaemonConfig({ agentSettingsProfiles: fixture.bundle });
+      await toggle.click();
+      await expect(error).toHaveCount(0);
+      await expect(toggle).toBeChecked();
+      expect(
+        (await fixture.client.getDaemonConfig()).config.agentSettingsProfiles?.profiles[0].settings
+          .mcp.injectIntoAgents,
+      ).toBe(true);
+      await captureSettingsFeedback(page, testInfo, "mcp-save-retry-success");
+    } finally {
+      await fixture.close();
+    }
+  });
+
+  test("system prompt save keeps the editor pending and persists through the real daemon", async ({
+    page,
+  }, testInfo) => {
+    const fixture = await openOrchestrationSettings(page);
+    try {
+      await page.getByTestId("host-page-append-system-prompt-edit").click();
+      const input = page.getByTestId("host-page-append-system-prompt-input");
+      await input.fill("App-level saved prompt");
+      const save = page.getByTestId("host-page-append-system-prompt-save");
+      fixture.gate.holdNextClientRequest("set_daemon_config_request");
+      await save.click();
+      await fixture.gate.waitForHeldClientRequest();
+      await expect(save).toContainText("Saving");
+      await expect(save).toBeDisabled();
+      await expect(page.getByTestId("host-page-append-system-prompt-reset")).toBeDisabled();
+      await expect(input).toHaveValue("App-level saved prompt");
+      await captureSettingsFeedback(page, testInfo, "prompt-save-pending");
+      fixture.gate.releaseHeldClientRequest();
+      await expect(page.getByTestId("host-page-append-system-prompt-sheet")).toHaveCount(0);
+      expect((await fixture.client.getDaemonConfig()).config.appendSystemPrompt).toBe(
+        "App-level saved prompt",
+      );
+      await page.getByTestId("host-page-append-system-prompt-edit").click();
+      await expect(input).toHaveValue("App-level saved prompt");
+      await captureSettingsFeedback(page, testInfo, "prompt-save-success");
+    } finally {
+      await fixture.close();
+    }
+  });
+
+  test("system prompt save shows a real daemon rejection and retains the draft for retry", async ({
+    page,
+  }, testInfo) => {
+    const fixture = await openOrchestrationSettings(page);
+    try {
+      await page.getByTestId("host-page-append-system-prompt-edit").click();
+      const input = page.getByTestId("host-page-append-system-prompt-input");
+      await input.fill("Keep this unsaved prompt");
+      fixture.gate.setServerMessageSuppressed("status", true);
+      await fixture.client.patchDaemonConfig({
+        agentSettingsProfiles: {
+          activeProfileId: "reverse",
+          profiles: [fixture.bundle.profiles[1]],
+        },
+      });
+      const save = page.getByTestId("host-page-append-system-prompt-save");
+      await save.click();
+      const error = page.getByTestId("host-page-append-system-prompt-error");
+      await expect(error).toContainText("Agent settings profile does not exist");
+      await expect(input).toHaveValue("Keep this unsaved prompt");
+      await expect(save).toBeEnabled();
+      expect((await fixture.client.getDaemonConfig()).config.appendSystemPrompt).toBe(
+        "Stored prompt",
+      );
+      await captureSettingsFeedback(page, testInfo, "prompt-save-error");
+      await fixture.client.patchDaemonConfig({ agentSettingsProfiles: fixture.bundle });
+      await save.click();
+      await expect(page.getByTestId("host-page-append-system-prompt-sheet")).toHaveCount(0);
+      expect(
+        (await fixture.client.getDaemonConfig()).config.agentSettingsProfiles?.profiles[0].settings
+          .appendSystemPrompt,
+      ).toBe("Keep this unsaved prompt");
+      await page.getByTestId("host-page-append-system-prompt-edit").click();
+      await expect(input).toHaveValue("Keep this unsaved prompt");
+      await expect(error).toHaveCount(0);
+      await captureSettingsFeedback(page, testInfo, "prompt-save-retry-success");
+    } finally {
+      await fixture.close();
+    }
+  });
+
   test("stale profile removal shows an error and preserves a concurrent edit", async ({ page }) => {
     const client = await connectDaemonClient<DaemonClient>({
       clientIdPrefix: "stale-profile-removal",
@@ -226,17 +401,18 @@ test.describe("Agent profiles settings", () => {
 
   test("new chats can select different settings profiles without changing the host default", async ({
     page,
-  }) => {
+  }, testInfo) => {
     const client = await connectDaemonClient<DaemonClient>({
       clientIdPrefix: "profile-chats",
     });
     const previous = (await client.getDaemonConfig()).config;
+    const codingProfileName = "Kodlama";
     const bundle = {
       activeProfileId: "coding",
       profiles: [
         {
           id: "coding",
-          name: "Coding",
+          name: codingProfileName,
           settings: {
             appendSystemPrompt: "Write tested code.",
             mcp: { injectIntoAgents: false },
@@ -272,14 +448,51 @@ test.describe("Agent profiles settings", () => {
       await openAgentRoute(page, workspace);
       await expect(
         page.getByTestId("chat-settings-profile-name").filter({ visible: true }),
-      ).toHaveText("Coding");
+      ).toHaveText(codingProfileName);
+      const badge = page.getByTestId("chat-settings-profile-label").filter({ visible: true });
+      const liveModel = page.getByTestId("combined-model-selector").filter({ visible: true });
+      await expect(badge).toBeVisible();
+      const badgeBox = await badge.boundingBox();
+      const liveModelBox = await liveModel.boundingBox();
+      if (!badgeBox || !liveModelBox)
+        throw new Error("Profile badge and model control must be visible");
+      expect(badgeBox.height).toBeCloseTo(28, 0);
+      expect(
+        Math.abs(badgeBox.y + badgeBox.height / 2 - liveModelBox.y - liveModelBox.height / 2),
+      ).toBeLessThanOrEqual(1);
+      await expect(badge.getByRole("button")).toHaveCount(0);
+      await captureSettingsFeedback(page, testInfo, "profile-badge-aligned");
       await page.getByTestId("workspace-pane-main").getByTestId("workspace-new-tab-button").click();
       await page.getByTestId("workspace-new-tab-menu-agent").click();
       await expect(
         page.getByTestId("chat-settings-profile-selector").filter({ visible: true }),
-      ).toContainText("Coding");
-      await page.getByTestId("chat-settings-profile-selector").filter({ visible: true }).click();
+      ).toContainText(codingProfileName);
+      const picker = page.getByTestId("chat-settings-profile-selector").filter({ visible: true });
+      const draftModel = page.getByTestId("combined-model-selector").filter({ visible: true });
+      await expect(picker).toHaveAccessibleName(`Settings profile: ${codingProfileName}`);
+      const pickerBox = await picker.boundingBox();
+      const draftModelBox = await draftModel.boundingBox();
+      if (!pickerBox || !draftModelBox)
+        throw new Error("Profile picker and model control must be visible");
+      expect(pickerBox.height).toBeCloseTo(28, 0);
+      expect(
+        Math.abs(pickerBox.y + pickerBox.height / 2 - draftModelBox.y - draftModelBox.height / 2),
+      ).toBeLessThanOrEqual(1);
+      await captureSettingsFeedback(page, testInfo, "profile-picker-aligned");
+      await picker.focus();
+      await page.keyboard.press("Enter");
+      await expect(page.getByTestId("chat-settings-profile-reverse")).toBeVisible();
+      await captureSettingsFeedback(page, testInfo, "profile-picker-desktop-menu");
+      await page.keyboard.press("Escape");
+      await page.setViewportSize({ width: 390, height: 844 });
+      await expect(picker).toBeVisible();
+      await picker.click();
+      await expect(page.getByTestId("chat-settings-profile-reverse")).toBeVisible();
+      await expect(page.getByTestId("chat-settings-profile-reverse")).toBeInViewport({ ratio: 1 });
+      await captureSettingsFeedback(page, testInfo, "profile-picker-compact-menu");
       await page.getByTestId("chat-settings-profile-reverse").click();
+      await expect(picker).toContainText("Reverse engineering");
+      await page.setViewportSize({ width: 1280, height: 720 });
       await expect(
         page.getByTestId("chat-settings-profile-selector").filter({ visible: true }),
       ).toContainText("Reverse engineering");
@@ -301,17 +514,17 @@ test.describe("Agent profiles settings", () => {
       await page.getByTestId(`workspace-tab-agent_${workspace.agentId}`).click();
       await expect(
         page.getByTestId("chat-settings-profile-name").filter({ visible: true }),
-      ).toHaveText("Coding");
+      ).toHaveText(codingProfileName);
       await client.patchDaemonConfig({
         agentSettingsProfiles: { ...bundle, activeProfileId: "review" },
       });
       await expect(
         page.getByTestId("chat-settings-profile-name").filter({ visible: true }),
-      ).toHaveText("Coding");
+      ).toHaveText(codingProfileName);
       await page.reload();
       await expect(
         page.getByTestId("chat-settings-profile-name").filter({ visible: true }),
-      ).toHaveText("Coding");
+      ).toHaveText(codingProfileName);
     } finally {
       await workspace.cleanup();
       await restoreGeneralSettings(client, previous);

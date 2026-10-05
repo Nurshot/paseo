@@ -163,6 +163,7 @@ describe("useAgentInputDraft live contract", () => {
     useDraftStore.setState({
       drafts: {},
       createModalDraft: null,
+      settingsProfileChoices: {},
       attachmentFocusRequestByDraftKey: {},
     });
   });

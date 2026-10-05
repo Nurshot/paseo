@@ -875,7 +875,7 @@ function UpdateDaemonCard({ host }: { host: HostProfile }) {
   );
 }
 
-export function InjectPaseoToolsCard({ serverId }: { serverId: string }) {
+function InjectPaseoToolsCard({ serverId }: { serverId: string }) {
   const { t } = useTranslation();
   const isConnected = useHostRuntimeIsConnected(serverId);
   const { config, patchConfig } = useDaemonConfig(serverId);
@@ -1015,7 +1015,7 @@ function EnableTerminalAgentHooksCard({ serverId }: { serverId: string }) {
   );
 }
 
-export function AppendSystemPromptCard({ serverId }: { serverId: string }) {
+function AppendSystemPromptCard({ serverId }: { serverId: string }) {
   const { t } = useTranslation();
   const profileScoped = useHostFeature(serverId, "agentSettingsProfiles");
   const isConnected = useHostRuntimeIsConnected(serverId);

@@ -89,8 +89,10 @@ export function useAgentInputDraft(input: UseAgentInputDraftInput): AgentInputDr
     [formState.selectedServerId, input.draftKey],
   );
   const { config: hostConfig } = useDaemonConfig(formState.selectedServerId);
-  const [profileChoices, setProfileChoices] = useState<Record<string, string>>({});
-  const profileChoiceKey = JSON.stringify([draftKey, formState.selectedServerId]);
+  const settingsProfileChoice = useDraftStore(
+    (state) =>
+      state.settingsProfileChoices[draftKey]?.[formState.selectedServerId ?? ""] ?? undefined,
+  );
   const initialValues = composerOptions?.initialValues;
   const initialSettingsProfileId = resolveInitialSettingsProfileId({
     selectedServerId: formState.selectedServerId,
@@ -99,14 +101,20 @@ export function useAgentInputDraft(input: UseAgentInputDraftInput): AgentInputDr
     settingsProfileId: initialValues?.settingsProfileId,
   });
   const settingsProfileId =
-    profileChoices[profileChoiceKey] ??
+    settingsProfileChoice ??
     initialSettingsProfileId ??
     hostConfig?.agentSettingsProfiles?.activeProfileId;
   const selectSettingsProfile = useCallback(
     (id: string) => {
-      setProfileChoices((current) => ({ ...current, [profileChoiceKey]: id }));
+      const serverId = formState.selectedServerId;
+      if (!serverId) return;
+      useDraftStore.getState().setDraftSettingsProfileChoice({
+        draftKey,
+        serverId,
+        settingsProfileId: id,
+      });
     },
-    [profileChoiceKey],
+    [draftKey, formState.selectedServerId],
   );
   const attachments = useDraftStore(
     useShallow((state) =>
