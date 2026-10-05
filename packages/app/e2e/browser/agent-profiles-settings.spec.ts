@@ -1,4 +1,5 @@
 import { expect, test } from "../support/fixtures";
+import type { MutableDaemonConfig } from "@getpaseo/protocol/messages";
 import type { DaemonClient } from "@getpaseo/client/internal/daemon-client";
 import { connectDaemonClient } from "../support/helpers/daemon-client-loader";
 import { openAgentRoute, seedMockAgentWorkspace } from "../support/helpers/mock-agent";
@@ -22,6 +23,27 @@ import {
 
 const MOCK_PROVIDER_LABEL = "Mock Load Test";
 
+async function restoreGeneralSettings(client: DaemonClient, previous: MutableDaemonConfig) {
+  await client.patchDaemonConfig({
+    agentSettingsProfiles: previous.agentSettingsProfiles ?? {
+      activeProfileId: "default",
+      profiles: [
+        {
+          id: "default",
+          name: "Default",
+          settings: {
+            appendSystemPrompt: previous.appendSystemPrompt,
+            mcp: { injectIntoAgents: previous.mcp.injectIntoAgents },
+            browserTools: { enabled: previous.browserTools.enabled },
+            agentProfiles: previous.agentProfiles ?? [],
+            skills: { selection: previous.skills?.selection ?? { mode: "all" } },
+          },
+        },
+      ],
+    },
+  });
+}
+
 test.describe("Agent profiles settings", () => {
   test("repeated settings profile switches keep one copy of every Agents section", async ({
     page,
@@ -29,6 +51,7 @@ test.describe("Agent profiles settings", () => {
     const client = await connectDaemonClient<DaemonClient>({
       clientIdPrefix: "profile-section-count",
     });
+    const previous = (await client.getDaemonConfig()).config;
     const settings = {
       appendSystemPrompt: "",
       mcp: { injectIntoAgents: false },
@@ -65,12 +88,14 @@ test.describe("Agent profiles settings", () => {
         }
       }
     } finally {
+      await restoreGeneralSettings(client, previous);
       await client.close();
     }
   });
 
   test("general Agents profiles restore their own prompt and tool settings", async ({ page }) => {
     const client = await connectDaemonClient<DaemonClient>({ clientIdPrefix: "settings-profiles" });
+    const previous = (await client.getDaemonConfig()).config;
     try {
       await openAgentProfileSettings(page);
       await expect(page.getByTestId("agent-settings-profile-select")).toContainText("Default");
@@ -137,6 +162,7 @@ test.describe("Agent profiles settings", () => {
         ),
       ).toEqual(["Default", "Reverse engineering"]);
     } finally {
+      await restoreGeneralSettings(client, previous);
       await client.close();
     }
   });
@@ -145,6 +171,7 @@ test.describe("Agent profiles settings", () => {
     page,
   }) => {
     const client = await connectDaemonClient<DaemonClient>({ clientIdPrefix: "profile-chats" });
+    const previous = (await client.getDaemonConfig()).config;
     const bundle = {
       activeProfileId: "coding",
       profiles: [
@@ -228,6 +255,7 @@ test.describe("Agent profiles settings", () => {
       ).toHaveText("Coding");
     } finally {
       await workspace.cleanup();
+      await restoreGeneralSettings(client, previous);
       await client.close();
     }
   });
@@ -238,6 +266,7 @@ test.describe("Agent profiles settings", () => {
     const client = await connectDaemonClient<DaemonClient>({
       clientIdPrefix: "full-profile-scope",
     });
+    const previous = (await client.getDaemonConfig()).config;
     const base = {
       appendSystemPrompt: "",
       mcp: { injectIntoAgents: false },
@@ -332,6 +361,7 @@ test.describe("Agent profiles settings", () => {
         notes: "Use for binary analysis.",
       });
     } finally {
+      await restoreGeneralSettings(client, previous);
       await client.close();
     }
   });
