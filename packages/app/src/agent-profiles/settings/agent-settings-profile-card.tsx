@@ -49,6 +49,8 @@ function LoadedAgentSettingsProfileCard({
               appendSystemPrompt: config.appendSystemPrompt,
               mcp: { injectIntoAgents: config.mcp.injectIntoAgents },
               browserTools: { enabled: config.browserTools.enabled },
+              agentProfiles: config.agentProfiles ?? [],
+              skills: { selection: config.skills?.selection ?? { mode: "all" } },
             },
           },
         ],

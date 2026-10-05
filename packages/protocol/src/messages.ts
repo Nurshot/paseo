@@ -813,6 +813,7 @@ const AgentActiveTurnPayloadSchema = z.object({
 });
 
 export const AgentSnapshotPayloadSchema = z.object({
+  settingsProfileId: z.string().optional(),
   settingsProfileName: z.string().optional(),
   id: z.string(),
   provider: AgentProviderSchema,
@@ -847,6 +848,7 @@ export const AgentSnapshotPayloadSchema = z.object({
 export type AgentSnapshotPayload = z.infer<typeof AgentSnapshotPayloadSchema>;
 
 export const AgentListItemPayloadSchema = z.object({
+  settingsProfileId: z.string().optional(),
   settingsProfileName: z.string().optional(),
   id: z.string(),
   shortId: z.string(),

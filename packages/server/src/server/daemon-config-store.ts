@@ -34,12 +34,42 @@ interface SupportedMutableConfigPatch {
   plugins?: MutableDaemonConfig["plugins"];
 }
 
+function normalizeAgentSettingsProfileBundle(
+  current: MutableDaemonConfig,
+  bundle: NonNullable<MutableDaemonConfig["agentSettingsProfiles"]>,
+): NonNullable<MutableDaemonConfig["agentSettingsProfiles"]> {
+  // COMPAT(agentSettingsProfileScope): development profiles initially saved
+  // only prompt/tools. Keep the former shared lists in Default; remove after 2027-04-05.
+  const legacyOwner =
+    bundle.profiles.find((profile) => profile.id === "default")?.id ?? bundle.activeProfileId;
+  return {
+    ...bundle,
+    profiles: bundle.profiles.map((profile) => ({
+      id: profile.id,
+      name: profile.name,
+      settings: {
+        ...profile.settings,
+        agentProfiles:
+          profile.settings.agentProfiles ??
+          (profile.id === legacyOwner ? (current.agentProfiles ?? []) : []),
+        skills: profile.settings.skills ?? {
+          selection:
+            profile.id === legacyOwner
+              ? (current.skills?.selection ?? { mode: "all" as const })
+              : { mode: "custom" as const, skills: [] },
+        },
+      },
+    })),
+  };
+}
+
 function resolveAgentSettingsProfilePatch(
   current: MutableDaemonConfig,
   patch: SupportedMutableConfigPatch,
 ): SupportedMutableConfigPatch {
-  const bundle = patch.agentSettingsProfiles ?? current.agentSettingsProfiles;
-  if (!bundle) return patch;
+  const incoming = patch.agentSettingsProfiles ?? current.agentSettingsProfiles;
+  if (!incoming) return patch;
+  const bundle = normalizeAgentSettingsProfileBundle(current, incoming);
   const active = bundle.profiles.find((profile) => profile.id === bundle.activeProfileId);
   if (!active) throw new Error("The active agent settings profile does not exist");
   if (new Set(bundle.profiles.map((profile) => profile.id)).size !== bundle.profiles.length) {
@@ -53,12 +83,20 @@ function resolveAgentSettingsProfilePatch(
     appendSystemPrompt: patch.appendSystemPrompt ?? base.appendSystemPrompt,
     mcp: { injectIntoAgents: patch.mcp?.injectIntoAgents ?? base.mcp.injectIntoAgents },
     browserTools: { enabled: patch.browserTools?.enabled ?? base.browserTools.enabled },
+    agentProfiles: patch.agentProfiles ?? base.agentProfiles ?? [],
+    skills: {
+      selection: patch.skills?.selection ?? base.skills?.selection ?? { mode: "all" as const },
+    },
   };
   if (
-    patch.agentSettingsProfiles === undefined &&
-    patch.appendSystemPrompt === undefined &&
-    patch.mcp === undefined &&
-    patch.browserTools === undefined
+    [
+      patch.agentSettingsProfiles,
+      patch.appendSystemPrompt,
+      patch.mcp,
+      patch.browserTools,
+      patch.agentProfiles,
+      patch.skills,
+    ].every((value) => value === undefined)
   )
     return patch;
   // Keep the ordinary settings as the live projection, so existing clients and
@@ -379,8 +417,13 @@ export class DaemonConfigStore {
   ) {
     this.paseoHome = paseoHome;
     this.logger = getLogger(logger);
+    const profilePatch = resolveAgentSettingsProfilePatch(initial, {
+      agentSettingsProfiles: initial.agentSettingsProfiles,
+    });
     this.current = MutableDaemonConfigSchema.parse({
       ...initial,
+      ...profilePatch,
+      mcp: { ...initial.mcp, ...profilePatch.mcp },
       relay: initial.relay ?? { enabled: true },
     });
     this.relayEnabledMutable = options.relayEnabledMutable ?? true;
@@ -414,8 +457,8 @@ export class DaemonConfigStore {
     );
     const removedProviders = Array.from(new Set(removeProviders));
     const merged = deepMerge(this.current, configPatch);
-    if (parsedPatch.skills?.selection !== undefined) {
-      merged.skills = { selection: parsedPatch.skills.selection };
+    if (configPatch.skills?.selection !== undefined) {
+      merged.skills = { selection: configPatch.skills.selection };
     }
     if (parsedPatch.plugins !== undefined) merged.plugins = parsedPatch.plugins;
     const next = MutableDaemonConfigSchema.parse(
@@ -460,8 +503,13 @@ export class DaemonConfigStore {
     const resolved = this.reloadSource.resolve(persisted);
     // Plugin source changes require the plugin lifecycle operation or a daemon
     // restart. The global switch is independently reloadable.
+    const profilePatch = resolveAgentSettingsProfilePatch(resolved.mutable, {
+      agentSettingsProfiles: resolved.mutable.agentSettingsProfiles,
+    });
     const desired = MutableDaemonConfigSchema.parse({
       ...resolved.mutable,
+      ...profilePatch,
+      mcp: { ...resolved.mutable.mcp, ...profilePatch.mcp },
       plugins: this.current.plugins,
     });
     const changedSinceLastApply = diffPaths(this.lastKnownPersisted, persisted);

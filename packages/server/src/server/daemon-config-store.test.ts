@@ -99,6 +99,100 @@ describe("DaemonConfigStore", () => {
     }
   });
 
+  test("general profiles isolate the entire Agents configuration", () => {
+    const paseoHome = mkdtempSync(path.join(tmpdir(), "paseo-profile-config-"));
+    tempDirs.push(paseoHome);
+    const store = new DaemonConfigStore(paseoHome, reloadableConfig({ version: 1 }));
+    const codingAgents = [{ id: "developer", name: "Developer", provider: "codex" }];
+    const reverseAgents = [{ id: "analyst", name: "Binary analyst", provider: "claude" }];
+    const base = {
+      appendSystemPrompt: "",
+      mcp: { injectIntoAgents: false },
+      browserTools: { enabled: false },
+    };
+    const codingSkills = { mode: "custom" as const, skills: ["paseo"] };
+    const reverseSkills = { mode: "custom" as const, skills: [] };
+    store.patch({
+      agentSettingsProfiles: {
+        activeProfileId: "coding",
+        profiles: [
+          {
+            id: "coding",
+            name: "Coding",
+            settings: { ...base, agentProfiles: codingAgents, skills: { selection: codingSkills } },
+          },
+          {
+            id: "reverse",
+            name: "Reverse",
+            settings: {
+              ...base,
+              agentProfiles: reverseAgents,
+              skills: { selection: reverseSkills },
+            },
+          },
+        ],
+      },
+    });
+    expect(store.get().agentProfiles).toEqual(codingAgents);
+    expect(store.get().skills?.selection).toEqual(codingSkills);
+    store.patch({
+      agentProfiles: [...codingAgents, { id: "reviewer", name: "Reviewer", provider: "codex" }],
+    });
+    const codingEdited = store.get().agentProfiles;
+    store.patch({
+      agentSettingsProfiles: { ...store.get().agentSettingsProfiles!, activeProfileId: "reverse" },
+    });
+    expect(store.get().agentProfiles).toEqual(reverseAgents);
+    expect(store.get().skills?.selection).toEqual(reverseSkills);
+    store.setAgentSkillSelection({ mode: "all" });
+    store.patch({
+      agentSettingsProfiles: { ...store.get().agentSettingsProfiles!, activeProfileId: "coding" },
+    });
+    expect(store.get().agentProfiles).toEqual(codingEdited);
+    expect(store.get().skills?.selection).toEqual(codingSkills);
+    store.patch({ agentProfiles: [] });
+    store.patch({
+      agentSettingsProfiles: { ...store.get().agentSettingsProfiles!, activeProfileId: "reverse" },
+    });
+    expect(store.get().agentProfiles).toEqual(reverseAgents);
+    expect(store.get().skills?.selection).toEqual({ mode: "all" });
+  });
+
+  test("keeps formerly shared presets in Default when upgrading existing settings profiles", () => {
+    const paseoHome = mkdtempSync(path.join(tmpdir(), "paseo-profile-upgrade-"));
+    tempDirs.push(paseoHome);
+    const presets = [{ id: "saved", name: "Saved coding preset", provider: "codex" }];
+    const base = {
+      appendSystemPrompt: "",
+      mcp: { injectIntoAgents: false },
+      browserTools: { enabled: false },
+    };
+    const store = new DaemonConfigStore(paseoHome, {
+      ...reloadableConfig({ version: 1 }),
+      agentProfiles: presets,
+      skills: { selection: { mode: "all" } },
+      agentSettingsProfiles: {
+        activeProfileId: "reverse",
+        profiles: [
+          { id: "default", name: "Default", settings: base },
+          { id: "reverse", name: "Reverse", settings: base },
+        ],
+      },
+    });
+    expect(store.get().agentProfiles).toEqual([]);
+    expect(store.get().skills?.selection).toEqual({ mode: "custom", skills: [] });
+    store.patch({
+      agentSettingsProfiles: { ...store.get().agentSettingsProfiles!, activeProfileId: "default" },
+    });
+    expect(store.get().agentProfiles).toEqual(presets);
+    expect(store.get().skills?.selection).toEqual({ mode: "all" });
+    const restarted = new DaemonConfigStore(
+      paseoHome,
+      reloadableConfig(loadPersistedConfig(paseoHome)),
+    );
+    expect(restarted.get().agentProfiles).toEqual(presets);
+  });
+
   test("switches general agent settings profiles, saves edits and restores them after restart", () => {
     const paseoHome = mkdtempSync(path.join(tmpdir(), "paseo-daemon-config-store-"));
     tempDirs.push(paseoHome);
@@ -130,7 +224,7 @@ describe("DaemonConfigStore", () => {
     const edited = store.get().agentSettingsProfiles!;
     expect(edited.profiles[0].settings.appendSystemPrompt).toBe("Write tested code.");
     expect(edited.profiles[0].settings.browserTools.enabled).toBe(true);
-    expect(edited.profiles[1]).toEqual(reverse);
+    expect(edited.profiles[1]).toMatchObject(reverse);
 
     store.patch({ agentSettingsProfiles: { ...edited, activeProfileId: "reverse" } });
     expect(store.get()).toMatchObject(reverse.settings);

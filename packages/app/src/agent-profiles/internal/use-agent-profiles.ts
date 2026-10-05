@@ -13,7 +13,10 @@ export interface UseAgentProfilesResult {
   saveProfiles: (next: AgentProfile[]) => Promise<void>;
 }
 
-export function useAgentProfiles(serverId: string | null): UseAgentProfilesResult {
+export function useAgentProfiles(
+  serverId: string | null,
+  settingsProfileId?: string,
+): UseAgentProfilesResult {
   const { config, patchConfig } = useDaemonConfig(serverId);
   const isSupported = useSessionStore((state) => {
     return supportsAgentProfiles(state.sessions[serverId ?? ""]?.serverInfo?.features);
@@ -21,13 +24,33 @@ export function useAgentProfiles(serverId: string | null): UseAgentProfilesResul
 
   const saveProfiles = useCallback(
     async (next: AgentProfile[]) => {
-      await patchConfig({ agentProfiles: next });
+      if (!settingsProfileId || !config?.agentSettingsProfiles) {
+        if (settingsProfileId && settingsProfileId !== "default")
+          throw new Error("Agent settings profile does not exist");
+        await patchConfig({ agentProfiles: next });
+        return;
+      }
+      const bundle = config?.agentSettingsProfiles;
+      const profile = bundle?.profiles.find((entry) => entry.id === settingsProfileId);
+      if (!bundle || !profile) throw new Error("Agent settings profile does not exist");
+      const edited = { ...profile, settings: { ...profile.settings, agentProfiles: next } };
+      await patchConfig({
+        agentSettingsProfiles: {
+          ...bundle,
+          profiles: bundle.profiles.map((entry) => (entry.id === profile.id ? edited : entry)),
+        },
+      });
     },
-    [patchConfig],
+    [config?.agentSettingsProfiles, patchConfig, settingsProfileId],
   );
 
+  const configuredProfiles =
+    settingsProfileId && config?.agentSettingsProfiles
+      ? config?.agentSettingsProfiles?.profiles.find((profile) => profile.id === settingsProfileId)
+          ?.settings.agentProfiles
+      : config?.agentProfiles;
   return {
-    profiles: config ? (config.agentProfiles ?? []) : null,
+    profiles: config ? (configuredProfiles ?? []) : null,
     isSupported,
     saveProfiles,
   };

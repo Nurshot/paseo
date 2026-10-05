@@ -1559,6 +1559,9 @@ export const AgentControls = memo(function AgentControls({
   const agent = useSessionStore(
     useShallow((state) => selectAgentControlsSlice(state, serverId, agentId)),
   );
+  const settingsProfileId = useSessionStore(
+    (state) => state.sessions[serverId]?.agents.get(agentId)?.settingsProfileId,
+  );
   const client = useSessionStore((state) => state.sessions[serverId]?.client ?? null);
   const toast = useToast();
   const modeControl = useLiveAgentModeControl(serverId, agentId);
@@ -1663,9 +1666,10 @@ export const AgentControls = memo(function AgentControls({
     serverId,
     availableProviders: profileProviders,
     target: profileTarget,
+    settingsProfileId: settingsProfileId,
   });
   const handleEditAgentProfiles = useEditAgentProfilesNavigation(serverId, agentProfiles !== null);
-  const profileEditor = useAgentProfileEditor(serverId);
+  const profileEditor = useAgentProfileEditor(serverId, settingsProfileId);
   const profileActions = resolveAgentProfileEditorActions(agentProfiles !== null, profileEditor);
 
   const handleSelectThinkingOption = useCallback(
@@ -1888,12 +1892,13 @@ export function DraftAgentControls({
     serverId: modelSelectorServerId,
     availableProviders: profileProviders,
     target: profileTarget,
+    settingsProfileId,
   });
   const handleEditAgentProfiles = useEditAgentProfilesNavigation(
     modelSelectorServerId,
     agentProfiles !== null,
   );
-  const profileEditor = useAgentProfileEditor(modelSelectorServerId);
+  const profileEditor = useAgentProfileEditor(modelSelectorServerId, settingsProfileId);
   const profileActions = resolveAgentProfileEditorActions(agentProfiles !== null, profileEditor);
 
   const modeControl = useMemo<AgentModeControlValue | null>(

@@ -26,13 +26,16 @@ Profiles are saved on that host. The available settings depend on the provider a
 ## Save general agent settings
 
 At the top of **Settings → your host → Agents**, use **Settings profile** to switch
-between named system prompts and Paseo/browser tool settings. **New profile** copies
+between named system prompts, Paseo/browser tool settings, agent profile lists and
+orchestration skill selections. **New profile** copies
 the current settings. Select the new profile, then edit the system prompt and tool
 switches below it. Your changes are saved to that profile. Rename or remove a profile
 under **Manage profiles**; at least one profile remains.
 
-These settings profiles are independent of the provider/model profiles. Orchestration
-skill installation stays shared across the host.
+Each settings profile owns its provider/model profile list. Switching loads that list
+and its selected orchestration skills. Skill files live in the providers’ shared
+directories; use the existing skill install/update actions to apply a selection to disk.
+Switching profiles alone does not install or delete skill files.
 
 When starting a chat, select a settings profile beside the model controls. The host's
 selected profile is the default. Each chat keeps the settings captured when it starts,

@@ -186,6 +186,110 @@ test.describe("Agent profiles settings", () => {
     }
   });
 
+  test("switching general profiles changes Agent profiles and skill selection", async ({
+    page,
+  }) => {
+    const client = await connectDaemonClient<DaemonClient>({
+      clientIdPrefix: "full-profile-scope",
+    });
+    const base = {
+      appendSystemPrompt: "",
+      mcp: { injectIntoAgents: false },
+      browserTools: { enabled: false },
+    };
+    const bundle = {
+      activeProfileId: "coding-scope",
+      profiles: [
+        {
+          id: "coding-scope",
+          name: "Coding scope",
+          settings: {
+            ...base,
+            agentProfiles: [
+              {
+                id: "dev",
+                name: "Developer preset",
+                provider: "mock",
+                model: "e2e-fast-stream",
+                modeId: "load-test",
+              },
+            ],
+            skills: { selection: { mode: "all" as const } },
+          },
+        },
+        {
+          id: "reverse-scope",
+          name: "Reverse scope",
+          settings: {
+            ...base,
+            agentProfiles: [
+              {
+                id: "binary",
+                name: "Binary analyst preset",
+                provider: "mock",
+                model: "e2e-fast-stream",
+                modeId: "load-test",
+              },
+            ],
+            skills: { selection: { mode: "custom" as const, skills: [] } },
+          },
+        },
+      ],
+    };
+    try {
+      await client.patchDaemonConfig({ agentSettingsProfiles: bundle });
+      await openAgentProfileSettings(page);
+      await expectAgentProfile(page, {
+        name: "Developer preset",
+        tags: [MOCK_PROVIDER_LABEL, "E2E fast stream", "Load test"],
+      });
+      await expect(page.getByTestId("agent-profiles-card")).not.toContainText(
+        "Binary analyst preset",
+      );
+      await page.getByTestId("agent-settings-profile-select").getByRole("button").click();
+      await page.getByText("Reverse scope", { exact: true }).click();
+      await expectAgentProfile(page, {
+        name: "Binary analyst preset",
+        tags: [MOCK_PROVIDER_LABEL, "E2E fast stream", "Load test"],
+      });
+      await expect(page.getByTestId("agent-profiles-card")).not.toContainText("Developer preset");
+      await expect
+        .poll(async () => (await client.getAgentSkillsStatus()).selection)
+        .toEqual({ mode: "custom", skills: [] });
+      await page.getByRole("button", { name: "Choose skills", exact: true }).click();
+      await expect(page.getByTestId("skill-selection-all")).toHaveAttribute(
+        "aria-checked",
+        "false",
+      );
+      await page.keyboard.press("Escape");
+      await editAgentProfile(page, "Binary analyst preset", { notes: "Use for binary analysis." });
+      await page.getByTestId("agent-settings-profile-select").getByRole("button").click();
+      await page.getByText("Coding scope", { exact: true }).click();
+      await expectAgentProfile(page, {
+        name: "Developer preset",
+        tags: [MOCK_PROVIDER_LABEL, "E2E fast stream", "Load test"],
+      });
+      await expect
+        .poll(async () => (await client.getAgentSkillsStatus()).selection)
+        .toEqual({ mode: "all" });
+      await page.getByTestId("agent-settings-profile-select").getByRole("button").click();
+      await page.getByText("Reverse scope", { exact: true }).click();
+      await expectAgentProfile(page, {
+        name: "Binary analyst preset",
+        tags: [MOCK_PROVIDER_LABEL, "E2E fast stream", "Load test"],
+        notes: "Use for binary analysis.",
+      });
+      await page.reload();
+      await expectAgentProfile(page, {
+        name: "Binary analyst preset",
+        tags: [MOCK_PROVIDER_LABEL, "E2E fast stream", "Load test"],
+        notes: "Use for binary analysis.",
+      });
+    } finally {
+      await client.close();
+    }
+  });
+
   test("legacy model favourites migrate into provider-and-model-only host profiles", async ({
     page,
   }) => {

@@ -963,6 +963,8 @@ export async function createPaseoDaemon(
         name: "Default",
         settings: {
           appendSystemPrompt: current.appendSystemPrompt,
+          agentProfiles: current.agentProfiles ?? [],
+          skills: { selection: current.skills?.selection ?? { mode: "all" } },
           mcp: { injectIntoAgents: current.mcp.injectIntoAgents },
           browserTools: { enabled: current.browserTools.enabled },
         },

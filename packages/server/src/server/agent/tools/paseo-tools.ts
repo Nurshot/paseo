@@ -2980,7 +2980,12 @@ export function createPaseoToolCatalog(options: PaseoToolHostDependencies): Pase
       },
     },
     async () => {
-      const profiles = daemonConfigStore?.get().agentProfiles ?? [];
+      const profiles =
+        (callerAgentId
+          ? agentManager.getSettingsProfile(callerAgentId)?.settings.agentProfiles
+          : undefined) ??
+        daemonConfigStore?.get().agentProfiles ??
+        [];
       return {
         content: [],
         structuredContent: ensureValidJson({ profiles }),

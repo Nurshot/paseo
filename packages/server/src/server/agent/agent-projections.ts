@@ -113,6 +113,7 @@ export function toAgentPayload(
   });
 
   const payload: AgentSnapshotPayload = {
+    settingsProfileId: agent.config.settingsProfile?.id,
     settingsProfileName: agent.config.settingsProfile?.name,
     id: agent.id,
     provider: agent.provider,
@@ -212,6 +213,7 @@ export function buildStoredAgentPayload(
     supportsRewindBoth: false,
   } as const;
 
+  const settingsProfile = record.config?.settingsProfile;
   const createdAt = new Date(record.createdAt);
   const updatedAt = new Date(resolveStoredAgentUpdatedAt(record));
   const lastUserMessageAt = record.lastUserMessageAt ? new Date(record.lastUserMessageAt) : null;
@@ -223,7 +225,9 @@ export function buildStoredAgentPayload(
   );
 
   return {
-    settingsProfileName: record.config?.settingsProfile?.name,
+    ...(settingsProfile
+      ? { settingsProfileId: settingsProfile.id, settingsProfileName: settingsProfile.name }
+      : {}),
     id: record.id,
     provider: record.provider,
     cwd: record.cwd,
@@ -256,6 +260,7 @@ export function buildStoredAgentPayload(
 
 export function toAgentListItemPayload(agent: AgentSnapshotPayload): AgentListItemPayload {
   return {
+    settingsProfileId: agent.settingsProfileId,
     settingsProfileName: agent.settingsProfileName,
     id: agent.id,
     shortId: agent.id.slice(0, 7),

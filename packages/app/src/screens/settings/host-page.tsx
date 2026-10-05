@@ -280,6 +280,8 @@ export function HostAgentsPage({ serverId }: { serverId: string }) {
   const { t } = useTranslation();
   const host = useHostProfile(serverId);
   const isConnected = useHostRuntimeIsConnected(serverId);
+  const { config } = useDaemonConfig(serverId);
+  const profileKey = config?.agentSettingsProfiles?.activeProfileId ?? "default";
 
   if (!host) {
     return <HostNotFound />;
@@ -292,15 +294,15 @@ export function HostAgentsPage({ serverId }: { serverId: string }) {
           <AgentSettingsProfileCard serverId={serverId} />
           <InjectPaseoToolsCard serverId={serverId} />
           <BrowserToolsOptInCard serverId={serverId} />
-          <AppendSystemPromptCard serverId={serverId} />
+          <AppendSystemPromptCard key={`prompt:${profileKey}`} serverId={serverId} />
         </SettingsSection>
       ) : (
         <View style={[settingsStyles.card, styles.emptyCard]}>
           <Text style={styles.emptyText}>{t("settings.host.agents.unavailable")}</Text>
         </View>
       )}
-      <AgentSkillsSection serverId={serverId} />
-      <AgentProfilesSection serverId={serverId} />
+      <AgentSkillsSection key={`skills:${profileKey}`} serverId={serverId} />
+      <AgentProfilesSection key={`profiles:${profileKey}`} serverId={serverId} />
     </View>
   );
 }

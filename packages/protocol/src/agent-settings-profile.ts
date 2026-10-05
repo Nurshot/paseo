@@ -1,9 +1,12 @@
 import { z } from "zod";
+import { AgentProfileSchema, AgentSkillSelectionSchema } from "./agent-profile.js";
 
 export const AgentSettingsSchema = z.object({
   appendSystemPrompt: z.string(),
   mcp: z.object({ injectIntoAgents: z.boolean() }),
   browserTools: z.object({ enabled: z.boolean() }),
+  agentProfiles: z.array(AgentProfileSchema).optional(),
+  skills: z.object({ selection: AgentSkillSelectionSchema }).optional(),
 });
 
 export const AgentSettingsProfileSchema = z.object({
