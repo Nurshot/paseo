@@ -1,0 +1,181 @@
+
+> @getpaseo/app@0.11.0-beta.4 test:e2e
+> playwright test --project=browser e2e/browser/agent-profiles-settings.spec.ts --workers=1
+
+(node:73707) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+[metro] Starting project at /Users/nurshot/Documents/Codex/2026-10-06/https-github-com-getpaseo-paseo-pull/work/paseo/packages/app
+[metro] Using src/app as the root directory for Expo Router.
+[metro] Experimental Expo Autolinking module resolver is enabled.
+[metro] React Compiler enabled
+[metro] Starting Metro Bundler
+[metro] Waiting on http://localhost:54826
+[metro] Logs for your project will appear below.
+[metro] | (node:76424) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[metro] | (Use `node --trace-warnings ...` to show where the warning was created)
+[metro] Web Bundled 2708ms packages/app/index.ts (5435 modules)
+[e2e] Metro warmed on port 54826
+
+Running 16 tests using 1 worker
+
+(node:76471) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:76471) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(node:76471) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+[e2e] Worker 0 daemon started on port 54881, home: /var/folders/d7/bdf4379d3bzgfg1k1466q3880000gn/T/paseo-e2e-worker-0-D9JlqP
+[metro] Web packages/app/index.ts ░░░░░░░░░░░░░░░░  0.0% (0/1)
+[metro] Web Bundled 133ms packages/app/index.ts (1 module)
+[metro]  LOG  [web] Logs will appear in the browser console
+[metro] Web Bundled 68ms packages/app/src/attachments/web/indexeddb-attachment-store.ts (1 module)
+  ✓   1 [browser] › e2e/browser/agent-profiles-settings.spec.ts:270:3 › Agent profiles settings › Paseo tools save shows pending state and persists through the real daemon (4.3s)
+[metro] Web Bundled 196ms packages/app/index.ts (1 module)
+[metro] Web Bundled 13ms packages/app/src/attachments/web/indexeddb-attachment-store.ts (1 module)
+[metro] Web packages/app/src/attachments/web/indexeddb-attachment-store.ts ░░░░░░░░░░░░░░░░  0.0% (0/1)
+[metro]  LOG  [web] Logs will appear in the browser console
+  ✓   2 [browser] › e2e/browser/agent-profiles-settings.spec.ts:293:3 › Agent profiles settings › Paseo tools save shows a real daemon rejection and supports retry (4.2s)
+[metro] Web Bundled 115ms packages/app/index.ts (1 module)
+[metro] Web Bundled 7ms packages/app/src/attachments/web/indexeddb-attachment-store.ts (1 module)
+[metro]  LOG  [web] Logs will appear in the browser console
+  ✓   3 [browser] › e2e/browser/agent-profiles-settings.spec.ts:325:3 › Agent profiles settings › system prompt save keeps the editor pending and persists through the real daemon (3.7s)
+[metro] Web Bundled 75ms packages/app/index.ts (1 module)
+[metro] Web Bundled 4ms packages/app/src/attachments/web/indexeddb-attachment-store.ts (1 module)
+[metro]  LOG  [web] Logs will appear in the browser console
+  ✓   4 [browser] › e2e/browser/agent-profiles-settings.spec.ts:353:3 › Agent profiles settings › system prompt save shows a real daemon rejection and retains the draft for retry (2.9s)
+[metro] Web Bundled 76ms packages/app/index.ts (1 module)
+[metro] Web Bundled 6ms packages/app/src/attachments/web/indexeddb-attachment-store.ts (1 module)
+[metro]  LOG  [web] Logs will appear in the browser console
+  ✓   5 [browser] › e2e/browser/agent-profiles-settings.spec.ts:392:3 › Agent profiles settings › stale profile removal shows an error and preserves a concurrent edit (2.8s)
+[metro] Web Bundled 63ms packages/app/index.ts (1 module)
+[metro] Web packages/app/index.ts ░░░░░░░░░░░░░░░░  0.0% (0/1)
+[metro] Web Bundled 2ms packages/app/src/attachments/web/indexeddb-attachment-store.ts (1 module)
+[metro]  LOG  [web] Logs will appear in the browser console
+[e2e] Worker 0 daemon stopped
+  ✘   6 [browser] › e2e/browser/agent-profiles-settings.spec.ts:444:3 › Agent profiles settings › profile switching shows pending feedback and a persistent conflict that can be retried (1.0m)
+(node:99223) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:99223) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(node:99223) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+[e2e] Worker 1 daemon started on port 55354, home: /var/folders/d7/bdf4379d3bzgfg1k1466q3880000gn/T/paseo-e2e-worker-1-OqhPsD
+[metro] Web packages/app/index.ts ░░░░░░░░░░░░░░░░  0.0% (0/1)
+[metro] Web Bundled 117ms packages/app/index.ts (1 module)
+[metro] Web Bundled 4ms packages/app/src/attachments/web/indexeddb-attachment-store.ts (1 module)
+[metro]  LOG  [web] Logs will appear in the browser console
+  ✓   7 [browser] › e2e/browser/agent-profiles-settings.spec.ts:483:3 › Agent profiles settings › repeated settings profile switches keep one copy of every Agents section (9.6s)
+[metro] Web packages/app/index.ts ░░░░░░░░░░░░░░░░  0.0% (0/1)
+[metro] Web Bundled 85ms packages/app/index.ts (1 module)
+[metro] Web Bundled 3ms packages/app/src/attachments/web/indexeddb-attachment-store.ts (1 module)
+[metro]  LOG  [web] Logs will appear in the browser console
+[metro] Web Bundled 85ms packages/app/index.ts (1 module)
+[metro] Web Bundled 3ms packages/app/src/attachments/web/indexeddb-attachment-store.ts (1 module)
+[metro]  LOG  [web] Logs will appear in the browser console
+  ✓   8 [browser] › e2e/browser/agent-profiles-settings.spec.ts:528:3 › Agent profiles settings › general Agents profiles restore their own prompt and tool settings (5.7s)
+[metro] Web Bundled 62ms packages/app/index.ts (1 module)
+[metro] Web Bundled 2ms packages/app/src/attachments/web/indexeddb-attachment-store.ts (1 module)
+[metro]  LOG  [web] Logs will appear in the browser console
+[metro] Web packages/app/index.ts ░░░░░░░░░░░░░░░░  0.0% (0/1)
+[metro] Web Bundled 64ms packages/app/index.ts (1 module)
+[metro] Web Bundled 3ms packages/app/src/attachments/web/indexeddb-attachment-store.ts (1 module)
+[metro]  LOG  [web] Logs will appear in the browser console
+  ✓   9 [browser] › e2e/browser/agent-profiles-settings.spec.ts:600:3 › Agent profiles settings › new chats choose profile tabs in the model menu across desktop and compact layouts (9.2s)
+[metro] Web Bundled 74ms packages/app/index.ts (1 module)
+[metro] Web Bundled 2ms packages/app/src/attachments/web/indexeddb-attachment-store.ts (1 module)
+[metro]  LOG  [web] Logs will appear in the browser console
+  ✓  10 [browser] › e2e/browser/agent-profiles-settings.spec.ts:659:3 › Agent profiles settings › deleting a selected draft profile falls back to the current host default and can send (4.1s)
+[metro] Web Bundled 78ms packages/app/index.ts (1 module)
+[metro] Web Bundled 2ms packages/app/src/attachments/web/indexeddb-attachment-store.ts (1 module)
+[metro]  LOG  [web] Logs will appear in the browser console
+  ✓  11 [browser] › e2e/browser/agent-profiles-settings.spec.ts:681:3 › Agent profiles settings › removing the last attachment with empty text preserves the chosen profile (4.6s)
+[metro] Web packages/app/index.ts ░░░░░░░░░░░░░░░░  0.0% (0/1)
+[metro] Web Bundled 95ms packages/app/index.ts (1 module)
+[metro] Web Bundled 18ms packages/app/src/attachments/web/indexeddb-attachment-store.ts (1 module)
+[metro]  LOG  [web] Logs will appear in the browser console
+[metro] Web Bundled 118ms packages/app/index.ts (1 module)
+[metro] Web Bundled 6ms packages/app/src/attachments/web/indexeddb-attachment-store.ts (1 module)
+[metro]  LOG  [web] Logs will appear in the browser console
+  ✓  12 [browser] › e2e/browser/agent-profiles-settings.spec.ts:705:3 › Agent profiles settings › connected clients see each host's profiles and keep draft choices separate when switching hosts (14.8s)
+[metro] Web packages/app/index.ts ░░░░░░░░░░░░░░░░  0.0% (0/1)
+[metro] Web Bundled 90ms packages/app/index.ts (1 module)
+[metro] Web Bundled 4ms packages/app/src/attachments/web/indexeddb-attachment-store.ts (1 module)
+[metro]  LOG  [web] Logs will appear in the browser console
+[metro] Web Bundled 104ms packages/app/index.ts (1 module)
+[metro] Web Bundled 3ms packages/app/src/attachments/web/indexeddb-attachment-store.ts (1 module)
+[metro]  LOG  [web] Logs will appear in the browser console
+  ✓  13 [browser] › e2e/browser/agent-profiles-settings.spec.ts:745:3 › Agent profiles settings › a fork uses its source host profile and the destination host default after switching (13.2s)
+[metro] Web packages/app/index.ts ░░░░░░░░░░░░░░░░  0.0% (0/1)
+[metro] Web Bundled 65ms packages/app/index.ts (1 module)
+[metro] Web Bundled 2ms packages/app/src/attachments/web/indexeddb-attachment-store.ts (1 module)
+[metro]  LOG  [web] Logs will appear in the browser console
+[metro] Web Bundled 70ms packages/app/index.ts (1 module)
+[metro] Web Bundled 2ms packages/app/src/attachments/web/indexeddb-attachment-store.ts (1 module)
+[metro]  LOG  [web] Logs will appear in the browser console
+  ✓  14 [browser] › e2e/browser/agent-profiles-settings.spec.ts:776:3 › Agent profiles settings › switching general profiles changes Agent profiles and skill selection (5.5s)
+[metro] Web Bundled 48ms packages/app/index.ts (1 module)
+[metro] Web Bundled 2ms packages/app/src/attachments/web/indexeddb-attachment-store.ts (1 module)
+[metro]  LOG  [web] Logs will appear in the browser console
+[metro] Web Bundled 59ms packages/app/index.ts (1 module)
+[metro] Web Bundled 3ms packages/app/src/attachments/web/indexeddb-attachment-store.ts (1 module)
+[metro]  LOG  [web] Logs will appear in the browser console
+[metro] Web Bundled 92ms packages/app/index.ts (1 module)
+[metro] Web packages/app/src/attachments/web/indexeddb-attachment-store.ts ░░░░░░░░░░░░░░░░  0.0% (0/1)
+[metro] Web Bundled 2ms packages/app/src/attachments/web/indexeddb-attachment-store.ts (1 module)
+[metro]  LOG  [web] Logs will appear in the browser console
+  ✓  15 [browser] › e2e/browser/agent-profiles-settings.spec.ts:875:3 › Agent profiles settings › legacy model favourites migrate into provider-and-model-only host profiles (5.7s)
+[metro] Web Bundled 55ms packages/app/index.ts (1 module)
+[metro] Web Bundled 2ms packages/app/src/attachments/web/indexeddb-attachment-store.ts (1 module)
+[metro]  LOG  [web] Logs will appear in the browser console
+  ✓  16 [browser] › e2e/browser/agent-profiles-settings.spec.ts:899:3 › Agent profiles settings › host owner creates, edits, reorders and removes agent profiles (5.5s)
+[e2e] Worker 1 daemon stopped
+[e2e] Metro stopped
+
+
+  1) [browser] › e2e/browser/agent-profiles-settings.spec.ts:444:3 › Agent profiles settings › profile switching shows pending feedback and a persistent conflict that can be retried 
+
+    [31mTest timeout of 60000ms exceeded.[39m
+
+    Error: locator.click: Test timeout of 60000ms exceeded.
+    Call log:
+    [2m  - waiting for getByRole('button', { name: 'Reverse', exact: true })[22m
+
+
+      451 |     fixture.gate.holdNextClientRequest("set_daemon_config_request");
+      452 |     await select.click();
+    > 453 |     await page.getByRole("menuitem", { name: "Reverse", exact: true }).click();
+          |                                                                      ^
+      454 |     await fixture.gate.waitForHeldClientRequest();
+      455 |     await expect(select).toBeDisabled();
+      456 |     await expect(page.getByTestId("agent-settings-profile-saving")).toBeVisible();
+        at /Users/nurshot/Documents/Codex/2026-10-06/https-github-com-getpaseo-paseo-pull/work/paseo/packages/app/e2e/browser/agent-profiles-settings.spec.ts:453:70
+
+    [31mTest timeout of 60000ms exceeded.[39m
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/agent-profiles-settings-Ag-68f8e-onflict-that-can-be-retried-browser/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: browser-console (text/plain) ────────────────────────────────────────────────────
+    [console:info] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+    [console:log] Running application "main" with appParams:
+     {rootTag: #root, hydrate: undefined} 
+    Development-level warnings: ON.
+    Performance optimizations: OFF.
+    [co...
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #3: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/agent-profiles-settings-Ag-68f8e-onflict-that-can-be-retried-browser/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/agent-profiles-settings-Ag-68f8e-onflict-that-can-be-retried-browser/error-context.md
+
+  1 failed
+    [browser] › e2e/browser/agent-profiles-settings.spec.ts:444:3 › Agent profiles settings › profile switching shows pending feedback and a persistent conflict that can be retried 
+  15 passed (4.1m)
+npm error Lifecycle script `test:e2e` failed with error:
+npm error code 1
+npm error path /Users/nurshot/Documents/Codex/2026-10-06/https-github-com-getpaseo-paseo-pull/work/paseo/packages/app
+npm error workspace @getpaseo/app@0.11.0-beta.4
+npm error location /Users/nurshot/Documents/Codex/2026-10-06/https-github-com-getpaseo-paseo-pull/work/paseo/packages/app
+npm error command failed
+npm error command sh -c playwright test --project=browser e2e/browser/agent-profiles-settings.spec.ts --workers=1

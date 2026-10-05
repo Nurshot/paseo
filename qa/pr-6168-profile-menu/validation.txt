@@ -1,0 +1,13 @@
+Source commit: f002de5e38e4505845df50666a9e70003e9c2ab0
+
+All 16 unique browser journeys were verified on macOS with real Chromium, real WebSocket clients and isolated real daemons. Mock providers supply chat inference only. The two-host cases use separate real daemons and valid profile bundles.
+
+The full file run recorded 15 passed and one failed: the newly added switching test clicked the SettingsSelect wrapper rather than its button. The fixture had not held a save request. After fixing that locator and the menu-item locators, the focused final recheck recorded 3 passed: switching pending/conflict/retry, removal pending/conflict/retry, and keyboard/desktop/compact model-menu profile tabs. All 16 cases therefore have passing results across these two recorded runs. The full file was not unnecessarily rerun after the focused checks passed.
+
+The earlier fork run caught a real missing settingsProfileId in fork setup. Source f002de5 fixes this; the full-file run here shows both the source-profile/destination-default fork journey and the two-host choice journey passing.
+
+18 focused draft tests passed. This machine runs Node 26, whose experimental global Web Storage conflicts with the legacy JSDOM harness. NODE_OPTIONS=--no-experimental-webstorage gives that harness the Web Storage behavior of the repository's Node 22 CI runtime; no production code or global runner config was changed.
+
+All workspace typechecks passed; lint reports zero warnings and zero errors; formatting and commit hooks passed. The Impeccable detector returned an empty findings list. Production web export with PASEO_WEB_PLATFORM=electron completed successfully.
+
+Screenshots show the actual app at 1280x720 and 390x844. No installed macOS/Windows Electron app or native iOS/Android device was exercised in this follow-up. Existing production daemons and installed apps were not replaced or restarted.
