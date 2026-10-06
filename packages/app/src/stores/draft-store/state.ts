@@ -243,7 +243,12 @@ export function pruneFinalizedDraftRecords(input: {
   let changed = false;
   const next: Record<string, DraftRecord> = {};
   for (const [draftKey, record] of Object.entries(input.drafts)) {
-    if (record.lifecycle !== "active" && input.nowMs - record.updatedAt >= FINALIZED_DRAFT_TTL_MS) {
+    const isEmpty =
+      isCanonicalDraftInput(record.input) &&
+      record.input.text.length === 0 &&
+      record.input.attachments.length === 0;
+    const isFinalized = record.lifecycle !== "active" || isEmpty;
+    if (isFinalized && input.nowMs - record.updatedAt >= FINALIZED_DRAFT_TTL_MS) {
       changed = true;
       continue;
     }

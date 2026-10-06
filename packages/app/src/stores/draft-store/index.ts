@@ -83,12 +83,15 @@ function createDraftRecord(input: {
   lifecycle: DraftLifecycleState;
   previousVersion?: number;
 }): DraftRecord {
+  const hasContent = input.draft.text.length > 0 || input.draft.attachments.length > 0;
+  const isEmptyActiveDraft = input.lifecycle === "active" && !hasContent;
+  const lifecycle = isEmptyActiveDraft ? "abandoned" : input.lifecycle;
   return {
     input: {
       text: input.draft.text,
       attachments: input.draft.attachments.map(normalizeComposerAttachment),
     },
-    lifecycle: input.lifecycle,
+    lifecycle,
     updatedAt: Date.now(),
     version: (input.previousVersion ?? 0) + 1,
   };

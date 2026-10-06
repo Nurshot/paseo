@@ -36,6 +36,7 @@ import {
 } from "../support/helpers/new-workspace";
 import { forkMostRecentAssistantTurnToNewWorkspace } from "../support/helpers/assistant-fork";
 import { awaitAssistantMessage } from "../support/helpers/agent-stream";
+import { DraftStoreStateSchema } from "../../src/stores/draft-store/state";
 
 const MOCK_PROVIDER_LABEL = "Mock Load Test";
 
@@ -205,6 +206,20 @@ async function expectSelectedProfile(page: Page, id: string) {
     "aria-selected",
     "true",
   );
+}
+
+async function expectEmptyDraftFinalized(page: Page) {
+  await expect
+    .poll(async () => {
+      const saved = await page.evaluate(() => localStorage.getItem("paseo-drafts"));
+      if (!saved) return null;
+      const state = DraftStoreStateSchema.parse(JSON.parse(saved).state);
+      const selectedDraft = Object.entries(state.settingsProfileChoices).find(([, choices]) =>
+        Object.values(choices).includes("reverse"),
+      );
+      return selectedDraft ? state.drafts[selectedDraft[0]] : null;
+    })
+    .toMatchObject({ input: { text: "", attachments: [] }, lifecycle: "abandoned" });
 }
 
 async function expectCapturedProfile(page: Page, name: string) {
@@ -711,6 +726,8 @@ test.describe("Agent profiles settings", () => {
     });
     await removeAttachmentPill(page, "composer-file-attachment-pill", "Remove file attachment");
     await expect(page.getByTestId("composer-file-attachment-pill")).toHaveCount(0);
+    await expectEmptyDraftFinalized(page);
+    await page.reload();
     await openProfileMenu(page);
     await expectSelectedProfile(page, "reverse");
     await closeProfileMenu(page);
