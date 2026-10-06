@@ -1,0 +1,9 @@
+Source commit: 096efffef10c45321356e066d8636b6efe031110
+
+The shared record constructor finalizes empty active inputs as abandoned tombstones while preserving independently stored profile choices. Existing empty active records from older builds are eligible for the normal five-minute tombstone cleanup. Whitespace and attachment-only inputs remain active, and legacy inputs awaiting migration are not treated as empty.
+
+Regression proof: temporarily restored the pre-fix draft-store/index.ts from f002de5, retaining the current test. The real-browser test failed because serialized storage contained lifecycle=active rather than abandoned. Restored the fix, reran the same isolated real-daemon/browser journey, and observed 1 passed. The assertion waits for the actual selected draft's empty persisted payload and inactive lifecycle, then reloads the page, verifies the profile choice and creates a chat with that profile. It cannot pass against an older attachment-bearing checkpoint.
+
+22 focused tests passed across draft-store state, the existing draft hook harness and workspace background handoff. The new state regression expires old empty active records while retaining whitespace-only and attachment-only drafts. Node 26 legacy JSDOM checks used NODE_OPTIONS=--no-experimental-webstorage as in the prior validation.
+
+All workspace typechecks, lint, formatting and commit hooks passed. No UI placement change or installed-app update was made in this follow-up.
